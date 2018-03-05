@@ -20,6 +20,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.games.Games;
 import com.google.android.gms.games.GamesActivityResultCodes;
 import com.google.android.gms.games.GamesCallbackStatusCodes;
+import com.google.android.gms.games.RealTimeMultiplayerClient;
 import com.google.android.gms.games.multiplayer.Invitation;
 import com.google.android.gms.games.multiplayer.InvitationCallback;
 import com.google.android.gms.games.multiplayer.Multiplayer;
@@ -190,7 +191,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (mPlaying) {
                 // add new player to an ongoing game
             } else if (shouldStartGame(room)) {
-                // start game!
+                mPlaying = true;
             }
         }
 
@@ -230,6 +231,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     // Handle messages received here.
                     byte[] message = realTimeMessage.getMessageData();
                     // process message contents...
+                }
+            };
+
+    private RealTimeMultiplayerClient.ReliableMessageSentCallback mReliableMessageSentHandler =
+            new RealTimeMultiplayerClient.ReliableMessageSentCallback() {
+                @Override
+                public void onRealTimeMessageSent(int statusCode, int tokenId, String recipientId) {
+                    // handle the message being sent.
+                    /*synchronized (this) {
+                        pendingMessageSet.remove(tokenId);
+                    }*/
                 }
             };
 
@@ -536,5 +548,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         startActivityForResult(intent, RC_INVITATION_INBOX);
                     }
                 });
+    }
+
+    void sendToAllReliably(byte[] message) {
+        for (String participantId : mRoom.getParticipantIds()) {
+            if (!participantId.equals(mMyParticipantId)) {
+                Task<Integer> task = Games.
+                        getRealTimeMultiplayerClient(this, mGoogleSignInAccount)
+                        .sendReliableMessage(message, mRoom.getRoomId(), participantId,
+                                mReliableMessageSentHandler).addOnCompleteListener(new OnCompleteListener<Integer>() {
+                            @Override
+                            public void onComplete(@NonNull Task<Integer> task) {
+                                // Keep track of which messages are sent, if desired.
+                                // recordMessageToken(task.getResult());
+                            }
+                        });
+            }
+        }
     }
 }
