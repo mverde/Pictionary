@@ -19,6 +19,9 @@
         <Button android:id="@+id/invite_players_button"
             android:text="@string/invite_players_button"
             style="@style/SignInButton" />
+        <Button android:id="@+id/invitations_button"
+            android:text="@string/invitations_button"
+            style="@style/SignInButton" />
     </LinearLayout>
 
 </android.support.constraint.ConstraintLayout>
