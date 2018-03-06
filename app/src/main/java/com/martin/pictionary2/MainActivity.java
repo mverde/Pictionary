@@ -472,7 +472,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void invitePlayers() {
         // launch the player selection screen
         // minimum: 1 other player; maximum: 3 other players
-        Games.getRealTimeMultiplayerClient(this, GoogleSignIn.getLastSignedInAccount(this))
+        Games.getRealTimeMultiplayerClient(this, mGoogleSignInAccount)
                 .getSelectOpponentsIntent(1, 3, true)
                 .addOnSuccessListener(new OnSuccessListener<Intent>() {
                     @Override
