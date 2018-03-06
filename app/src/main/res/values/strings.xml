@@ -4,4 +4,5 @@
     <string name="sign_out_button">Sign out</string>
     <string name="invite_players_button">Invite Players</string>
     <string name="invitations_button">Invitations</string>
+    <string name="guess">Guess</string>
 </resources>
