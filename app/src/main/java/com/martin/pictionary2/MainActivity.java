@@ -304,8 +304,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             findViewById(R.id.guessesFeed).setVisibility(View.GONE);
         }
         //getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        EditText editText = (EditText) findViewById(R.id.guessText);
+        final EditText editText = (EditText) findViewById(R.id.guessText);
         final LinearLayout guessesFeed = (LinearLayout) findViewById(R.id.guessesFeed);
+        final ScrollView scrollLayout = (ScrollView) findViewById(R.id.messagesScrollView);
+
 
         editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
@@ -316,6 +318,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     TextView guessContent = new TextView(thisActivity);
                     guessContent.setText(v.getText().toString());
                     guessesFeed.addView(guessContent);
+                    editText.setText("");
+                    editText.setEnabled(false);
+                    editText.setEnabled(true);
+
+                    // Scroll to bottom automatically
+                    scrollLayout.post(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            scrollLayout.fullScroll(View.FOCUS_DOWN);
+                        }
+                    });
+
 //                    GuessMessage guess = new GuessMessage(v.getText().toString(), mMyParticipantId);
 //                    sendMessage(guess);
                     handled = true;

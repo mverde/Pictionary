@@ -2,71 +2,86 @@
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:focusableInTouchMode="true"
     tools:context="com.martin.pictionary2.MainActivity">
 
-    <LinearLayout
-        android:id="@+id/linearLayout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <com.google.android.gms.common.SignInButton
-            android:id="@+id/sign_in_button"
-            style="@style/SignInButton" />
-
-        <Button
-            android:id="@+id/sign_out_button"
-            style="@style/SignInButton"
-            android:text="@string/sign_out_button" />
-
-        <Button
-            android:id="@+id/invite_players_button"
-            style="@style/SignInButton"
-            android:text="@string/invite_players_button" />
-
-        <Button
-            android:id="@+id/invitations_button"
-            style="@style/SignInButton"
-            android:text="@string/invitations_button" />
-    </LinearLayout>
-
-    <EditText
-        android:id="@+id/guessText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="17dp"
-        android:layout_marginEnd="153dp"
-        android:layout_marginStart="32dp"
-        android:layout_marginTop="321dp"
-        android:ems="10"
-        android:hint="Guess"
-        android:imeOptions="actionSend"
-        android:inputType="textShortMessage"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
-
-    <ScrollView
-        android:layout_width="368dp"
-        android:layout_height="85dp"
-        android:layout_marginBottom="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="228dp"
-        app:layout_constraintBottom_toTopOf="@+id/guessText"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/linearLayout">
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/relativeLayout">
 
         <LinearLayout
-            android:id="@+id/guessesFeed"
+            android:id="@+id/menuButtons"
+            android:layout_width="wrap_content"
+            android:layout_height="136dp"
+            android:orientation="horizontal">
+
+            <com.google.android.gms.common.SignInButton
+                android:id="@+id/sign_in_button"
+                style="@style/SignInButton" />
+
+            <Button
+                android:id="@+id/sign_out_button"
+                style="@style/SignInButton"
+                android:text="@string/sign_out_button" />
+
+            <Button
+                android:id="@+id/invite_players_button"
+                style="@style/SignInButton"
+                android:text="@string/invite_players_button" />
+
+            <Button
+                android:id="@+id/invitations_button"
+                style="@style/SignInButton"
+                android:text="@string/invitations_button" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/messages"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" />
-    </ScrollView>
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentStart="true"
+            android:gravity="bottom"
+            android:orientation="vertical">
+
+            <ScrollView
+                android:id="@+id/messagesScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="70dp"
+                android:layout_marginEnd="10dp"
+                android:layout_marginStart="10dp"
+                android:paddingBottom="10dp"
+                android:paddingEnd="10dp"
+                android:paddingStart="10dp"
+                app:layout_constraintBottom_toTopOf="@+id/guessText">
+
+                <LinearLayout
+                    android:id="@+id/guessesFeed"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </ScrollView>
+
+            <EditText
+                android:id="@+id/guessText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginBottom="10dp"
+                android:ems="10"
+                android:hint="@string/guess"
+                android:imeOptions="actionSend"
+                android:inputType="textShortMessage"
+                android:textAlignment="center"
+                android:textAppearance="@style/TextAppearance.AppCompat.Small" />
+
+        </LinearLayout>
+
+    </RelativeLayout>
 
 
 </android.support.constraint.ConstraintLayout>
