@@ -60,6 +60,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final int MIN_PLAYERS = 2;
     private static final int MAX_PLAYERS = 8;
 
+    boolean mPlaying = false;
+    private Activity thisActivity = this;
+    private Room mRoom;
+    private String mMyParticipantId;
+
     private GoogleSignInAccount mGoogleSignInAccount = null;
     private GoogleSignInOptions mGoogleSignInOptions = null;
 
@@ -70,11 +75,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             // Update UI and internal state based on room updates.
             if (code == GamesCallbackStatusCodes.OK && room != null) {
                 Log.d(TAG, "Room " + room.getRoomId() + " created.");
+                showWaitingRoom(room, MAX_PLAYERS);
             } else {
                 Log.w(TAG, "Error creating room: " + code);
                 // let screen go to sleep
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
             }
         }
 
@@ -101,7 +106,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         public void onRoomConnected(int code, @Nullable Room room) {
             if (code == GamesCallbackStatusCodes.OK && room != null) {
                 Log.d(TAG, "Room " + room.getRoomId() + " connected.");
-                showWaitingRoom(room, MAX_PLAYERS);
+                //showWaitingRoom(room, MAX_PLAYERS);
             } else {
                 Log.w(TAG, "Error connecting to room: " + code);
                 // let screen go to sleep
@@ -110,11 +115,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
     };
-    // are we already playing?
-    boolean mPlaying = false;
-    private Activity thisActivity = this;
-    private Room mRoom;
-    private String mMyParticipantId;
 
     private RoomStatusUpdateCallback mRoomStatusCallbackHandler = new RoomStatusUpdateCallback() {
         @Override
@@ -145,6 +145,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (!mPlaying && shouldCancelGame(room)) {
                 Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
                         .leave(mJoinedRoomConfig, room.getRoomId());
+                Log.i(TAG, "Left room in onPeerDeclined");
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             }
         }
@@ -164,6 +165,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (!mPlaying && shouldCancelGame(room)) {
                 Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
                         .leave(mJoinedRoomConfig, room.getRoomId());
+                Log.i(TAG, "Left room in onPeerLeft");
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             }
         }
@@ -188,6 +190,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Log.i(TAG, "Disconnected from room " + room.getRoomId());
             Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
                     .leave(mJoinedRoomConfig, room.getRoomId());
+            Log.i(TAG, "Left room in onDisconnectedFromRoom");
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             // show error message and return to main screen
             mRoom = null;
@@ -218,6 +221,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 // cancel the game
                 Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
                         .leave(mJoinedRoomConfig, room.getRoomId());
+                Log.i(TAG, "Left room in onPeersDisconnected");
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             }
         }
@@ -402,6 +406,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     .setOnMessageReceivedListener(mMessageReceivedHandler)
                     .setRoomStatusUpdateCallback(mRoomStatusCallbackHandler)
                     .addPlayersToInvite(invitees);
+
             if (minAutoPlayers > 0) {
                 roomBuilder.setAutoMatchCriteria(
                         RoomConfig.createAutoMatchCriteria(minAutoPlayers, maxAutoPlayers, 0));
@@ -430,11 +435,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 // in this example, we take the simple approach and just leave the room:
                 Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
                         .leave(mJoinedRoomConfig, mRoom.getRoomId());
+                Log.i(TAG, "Left room because waiting room cancelled");
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             } else if (resultCode == GamesActivityResultCodes.RESULT_LEFT_ROOM) {
                 // player wants to leave the room.
                 Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
                         .leave(mJoinedRoomConfig, mRoom.getRoomId());
+                Log.i(TAG, "Left room because result left waiting room");
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             }
         } else if (requestCode == RC_INVITATION_INBOX) {
@@ -464,6 +471,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         signOut();
         Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
                 .leave(mJoinedRoomConfig, mRoom.getRoomId());
+        Log.i(TAG, "Left room in onDestroy");
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
@@ -555,6 +563,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 .addOnSuccessListener(new OnSuccessListener<Intent>() {
                     @Override
                     public void onSuccess(Intent intent) {
+                        Log.i(TAG, "showing waiting room UI");
                         startActivityForResult(intent, RC_WAITING_ROOM);
                     }
                 });
