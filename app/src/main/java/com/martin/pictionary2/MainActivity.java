@@ -8,8 +8,15 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.ScrollView;
+import android.widget.TextView;
 
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -34,6 +41,8 @@ import com.google.android.gms.games.multiplayer.realtime.RoomUpdateCallback;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.martin.pictionary2.messages.GuessMessage;
+import com.martin.pictionary2.messages.Message;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -106,6 +115,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Activity thisActivity = this;
     private Room mRoom;
     private String mMyParticipantId;
+
     private RoomStatusUpdateCallback mRoomStatusCallbackHandler = new RoomStatusUpdateCallback() {
         @Override
         public void onRoomConnecting(@Nullable Room room) {
@@ -191,6 +201,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (mPlaying) {
                 // add new player to an ongoing game
             } else if (shouldStartGame(room)) {
+                // set initial game state
                 mPlaying = true;
             }
         }
@@ -224,6 +235,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     };
 
+    // called when a message is received
     private OnRealTimeMessageReceivedListener mMessageReceivedHandler =
             new OnRealTimeMessageReceivedListener() {
                 @Override
@@ -281,8 +293,37 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
             findViewById(R.id.invite_players_button).setVisibility(View.VISIBLE);
             findViewById(R.id.invitations_button).setVisibility(View.VISIBLE);
+            findViewById(R.id.guessText).setVisibility(View.VISIBLE);
+            findViewById(R.id.guessesFeed).setVisibility(View.VISIBLE);
+        } else {
+            findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
+            findViewById(R.id.sign_out_button).setVisibility(View.GONE);
+            findViewById(R.id.invite_players_button).setVisibility(View.GONE);
+            findViewById(R.id.invitations_button).setVisibility(View.GONE);
+            findViewById(R.id.guessText).setVisibility(View.GONE);
+            findViewById(R.id.guessesFeed).setVisibility(View.GONE);
         }
         //getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        EditText editText = (EditText) findViewById(R.id.guessText);
+        final LinearLayout guessesFeed = (LinearLayout) findViewById(R.id.guessesFeed);
+
+        editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                boolean handled = false;
+                if (actionId == EditorInfo.IME_ACTION_SEND) {
+                    // set guess text in list view
+                    TextView guessContent = new TextView(thisActivity);
+                    guessContent.setText(v.getText().toString());
+                    guessesFeed.addView(guessContent);
+//                    GuessMessage guess = new GuessMessage(v.getText().toString(), mMyParticipantId);
+//                    sendMessage(guess);
+                    handled = true;
+                }
+                return handled;
+            }
+        });
+
     }
 
     @Override
@@ -310,6 +351,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             findViewById(R.id.sign_out_button).setVisibility(View.GONE);
             findViewById(R.id.invite_players_button).setVisibility(View.GONE);
             findViewById(R.id.invitations_button).setVisibility(View.GONE);
+            findViewById(R.id.guessText).setVisibility(View.GONE);
+            findViewById(R.id.guessesFeed).setVisibility(View.GONE);
         } else if (view.getId() == R.id.invite_players_button) {
             invitePlayers();
         } else if (view.getId() == R.id.invitations_button) {
@@ -330,6 +373,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
                 findViewById(R.id.invite_players_button).setVisibility(View.VISIBLE);
                 findViewById(R.id.invitations_button).setVisibility(View.VISIBLE);
+                findViewById(R.id.guessText).setVisibility(View.VISIBLE);
+                findViewById(R.id.guessesFeed).setVisibility(View.VISIBLE);
             } else {
                 String message = result.getStatus().getStatusMessage();
                 if (message == null || message.isEmpty()) {
@@ -439,6 +484,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
                             findViewById(R.id.invite_players_button).setVisibility(View.VISIBLE);
                             findViewById(R.id.invitations_button).setVisibility(View.VISIBLE);
+                            findViewById(R.id.guessText).setVisibility(View.VISIBLE);
+                            findViewById(R.id.guessesFeed).setVisibility(View.VISIBLE);
                             Log.i(TAG, "Successfully signed in silently as: " + mGoogleSignInAccount.getDisplayName());
                             checkForInvitation();
                         } else {
@@ -550,6 +597,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 });
     }
 
+    void sendMessage(Message message) {
+        // set contents of listview
+
+    }
+
+    // sends a byte array to all other players
     void sendToAllReliably(byte[] message) {
         for (String participantId : mRoom.getParticipantIds()) {
             if (!participantId.equals(mMyParticipantId)) {
