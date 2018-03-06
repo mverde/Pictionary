@@ -41,9 +41,13 @@ import com.google.android.gms.games.multiplayer.realtime.RoomUpdateCallback;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.martin.pictionary2.messages.GuessMessage;
 import com.martin.pictionary2.messages.Message;
+import com.martin.pictionary2.messages.MessageAdapter;
 
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,6 +68,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Activity thisActivity = this;
     private Room mRoom;
     private String mMyParticipantId;
+
+    private Gson mMapper;
 
     private GoogleSignInAccount mGoogleSignInAccount = null;
     private GoogleSignInOptions mGoogleSignInOptions = null;
@@ -246,7 +252,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 public void onRealTimeMessageReceived(@NonNull RealTimeMessage realTimeMessage) {
                     // Handle messages received here.
                     byte[] message = realTimeMessage.getMessageData();
-                    // process message contents...
+                    onMessageReceived(message);
                 }
             };
 
@@ -292,6 +298,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mGoogleSignInOptions = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN)
                 .requestProfile()
                 .build();
+        mMapper = new GsonBuilder().registerTypeAdapter(Message.class, new MessageAdapter())
+                .create();
         if (isSignedIn()) {
             findViewById(R.id.sign_in_button).setVisibility(View.GONE);
             findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
@@ -312,7 +320,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         final LinearLayout guessesFeed = (LinearLayout) findViewById(R.id.guessesFeed);
         final ScrollView scrollLayout = (ScrollView) findViewById(R.id.messagesScrollView);
 
-
         editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
@@ -322,6 +329,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     TextView guessContent = new TextView(thisActivity);
                     guessContent.setText(v.getText().toString());
                     guessesFeed.addView(guessContent);
+                    GuessMessage guess = new GuessMessage(v.getText().toString(), mMyParticipantId);
+                    sendMessage(guess);
                     editText.setText("");
                     editText.setEnabled(false);
                     editText.setEnabled(true);
@@ -335,8 +344,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         }
                     });
 
-//                    GuessMessage guess = new GuessMessage(v.getText().toString(), mMyParticipantId);
-//                    sendMessage(guess);
                     handled = true;
                 }
                 return handled;
@@ -622,8 +629,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     void sendMessage(Message message) {
-        // set contents of listview
-
+        String messageString = mMapper.toJson(message, Message.class);
+        byte[] messageData;
+        try {
+            messageData = messageString.getBytes("UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            Log.e(TAG, "Could not encode " + messageString + " as UTF-8");
+            return;
+        }
+        sendToAllReliably(messageData);
     }
 
     // sends a byte array to all other players
@@ -641,6 +655,32 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             }
                         });
             }
+        }
+    }
+
+    private void onMessageReceived(byte[] messageData) {
+        String messageString = new String(messageData);
+        Log.i(TAG, "Message received: " + messageString);
+        Message message = mMapper.fromJson(messageString, Message.class);
+
+        if (message instanceof GuessMessage) {
+            GuessMessage guessMessage = (GuessMessage) message;
+            Log.i(TAG, "Got GuessMessage: " + guessMessage.getGuess());
+            final LinearLayout guessesFeed = (LinearLayout) findViewById(R.id.guessesFeed);
+            final ScrollView scrollLayout = (ScrollView) findViewById(R.id.messagesScrollView);
+
+            // set guess text in list view
+            TextView guessContent = new TextView(thisActivity);
+            guessContent.setText(guessMessage.getGuess());
+            guessesFeed.addView(guessContent);
+
+            // Scroll to bottom automatically
+            scrollLayout.post(new Runnable() {
+                @Override
+                public void run() {
+                    scrollLayout.fullScroll(View.FOCUS_DOWN);
+                }
+            });
         }
     }
 }
