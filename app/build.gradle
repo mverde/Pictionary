@@ -48,4 +48,5 @@ dependencies {
     implementation "com.google.android.gms:play-services-games:${gms_library_version}"
     implementation "com.google.android.gms:play-services-auth:${gms_library_version}"
     compile 'com.google.code.gson:gson:2.8.0'
+    compile 'com.github.QuadFlask:colorpicker:0.0.13'
 }

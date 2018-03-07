@@ -4,7 +4,15 @@ package com.martin.pictionary2.messages;
  * Created by desireelenart on 3/5/18.
  */
 
+import android.graphics.Bitmap;
+import android.view.MotionEvent;
+
+import com.martin.pictionary2.drawing.FingerPath;
+import com.martin.pictionary2.drawing.PaintView;
 import com.martin.pictionary2.DrawingCoordinate;
+
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 
 /**
  * Message that the artist has drawn a point and the recipient
@@ -15,30 +23,20 @@ import com.martin.pictionary2.DrawingCoordinate;
 
 
 public class DrawingMessage extends Message {
-    private DrawingCoordinate coordinate;
-    private int color;
+    private MotionEvent motionEvent;
 
     public DrawingMessage() {
     }
 
-    public DrawingMessage(DrawingCoordinate coordinate, int color) {
-        this.coordinate = coordinate;
-        this.color = color;
+    public DrawingMessage(MotionEvent motionEvent) {
+        this.motionEvent = motionEvent;
     }
 
-    public DrawingCoordinate getPoint() {
-        return coordinate;
+    public MotionEvent getMotionEvent() {
+        return motionEvent;
     }
 
-    public void setPoint(DrawingCoordinate point) {
-        this.coordinate = point;
-    }
-
-    public int getColor() {
-        return color;
-    }
-
-    public void setColor(int color) {
-        this.color = color;
+    public void setMotionEvent() {
+        this.motionEvent = motionEvent;
     }
 }
