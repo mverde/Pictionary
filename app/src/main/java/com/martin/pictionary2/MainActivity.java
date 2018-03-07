@@ -331,7 +331,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         }
                     });
 
-//                    GuessMessage guess = new GuessMessage(v.getText().toString(), mMyParticipantId);
+                    GuessMessage guess = new GuessMessage(v.getText().toString(), mMyParticipantId);
 //                    sendMessage(guess);
                     handled = true;
                 }
@@ -613,7 +613,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     void sendMessage(Message message) {
-        // set contents of listview
 
     }
 
