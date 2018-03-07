@@ -41,9 +41,13 @@ import com.google.android.gms.games.multiplayer.realtime.RoomUpdateCallback;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.martin.pictionary2.messages.GuessMessage;
 import com.martin.pictionary2.messages.Message;
+import com.martin.pictionary2.messages.MessageAdapter;
 
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,6 +64,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final int MIN_PLAYERS = 2;
     private static final int MAX_PLAYERS = 8;
 
+    boolean mPlaying = false;
+    private Activity thisActivity = this;
+    private Room mRoom;
+    private String mMyParticipantId;
+
+    private Gson mMapper;
+
     private GoogleSignInAccount mGoogleSignInAccount = null;
     private GoogleSignInOptions mGoogleSignInOptions = null;
 
@@ -70,11 +81,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             // Update UI and internal state based on room updates.
             if (code == GamesCallbackStatusCodes.OK && room != null) {
                 Log.d(TAG, "Room " + room.getRoomId() + " created.");
+                showWaitingRoom(room, MAX_PLAYERS);
             } else {
                 Log.w(TAG, "Error creating room: " + code);
                 // let screen go to sleep
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
             }
         }
 
@@ -101,7 +112,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         public void onRoomConnected(int code, @Nullable Room room) {
             if (code == GamesCallbackStatusCodes.OK && room != null) {
                 Log.d(TAG, "Room " + room.getRoomId() + " connected.");
-                showWaitingRoom(room, MAX_PLAYERS);
+                //showWaitingRoom(room, MAX_PLAYERS);
             } else {
                 Log.w(TAG, "Error connecting to room: " + code);
                 // let screen go to sleep
@@ -110,11 +121,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
     };
-    // are we already playing?
-    boolean mPlaying = false;
-    private Activity thisActivity = this;
-    private Room mRoom;
-    private String mMyParticipantId;
 
     private RoomStatusUpdateCallback mRoomStatusCallbackHandler = new RoomStatusUpdateCallback() {
         @Override
@@ -145,6 +151,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (!mPlaying && shouldCancelGame(room)) {
                 Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
                         .leave(mJoinedRoomConfig, room.getRoomId());
+                Log.i(TAG, "Left room in onPeerDeclined");
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             }
         }
@@ -164,6 +171,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (!mPlaying && shouldCancelGame(room)) {
                 Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
                         .leave(mJoinedRoomConfig, room.getRoomId());
+                Log.i(TAG, "Left room in onPeerLeft");
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             }
         }
@@ -188,6 +196,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Log.i(TAG, "Disconnected from room " + room.getRoomId());
             Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
                     .leave(mJoinedRoomConfig, room.getRoomId());
+            Log.i(TAG, "Left room in onDisconnectedFromRoom");
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             // show error message and return to main screen
             mRoom = null;
@@ -218,6 +227,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 // cancel the game
                 Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
                         .leave(mJoinedRoomConfig, room.getRoomId());
+                Log.i(TAG, "Left room in onPeersDisconnected");
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             }
         }
@@ -242,7 +252,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 public void onRealTimeMessageReceived(@NonNull RealTimeMessage realTimeMessage) {
                     // Handle messages received here.
                     byte[] message = realTimeMessage.getMessageData();
-                    // process message contents...
+                    onMessageReceived(message);
                 }
             };
 
@@ -288,6 +298,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mGoogleSignInOptions = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN)
                 .requestProfile()
                 .build();
+        mMapper = new GsonBuilder().registerTypeAdapter(Message.class, new MessageAdapter())
+                .create();
         if (isSignedIn()) {
             findViewById(R.id.sign_in_button).setVisibility(View.GONE);
             findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
@@ -308,7 +320,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         final LinearLayout guessesFeed = (LinearLayout) findViewById(R.id.guessesFeed);
         final ScrollView scrollLayout = (ScrollView) findViewById(R.id.messagesScrollView);
 
-
         editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
@@ -318,6 +329,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     TextView guessContent = new TextView(thisActivity);
                     guessContent.setText(v.getText().toString());
                     guessesFeed.addView(guessContent);
+                    GuessMessage guess = new GuessMessage(v.getText().toString(), mMyParticipantId);
+                    sendMessage(guess);
                     editText.setText("");
                     editText.setEnabled(false);
                     editText.setEnabled(true);
@@ -331,8 +344,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         }
                     });
 
+<<<<<<< HEAD
                     GuessMessage guess = new GuessMessage(v.getText().toString(), mMyParticipantId);
 //                    sendMessage(guess);
+=======
+>>>>>>> acd1c714e27b5a153daf3ffbf6a7eb40219da1e9
                     handled = true;
                 }
                 return handled;
@@ -417,6 +433,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     .setOnMessageReceivedListener(mMessageReceivedHandler)
                     .setRoomStatusUpdateCallback(mRoomStatusCallbackHandler)
                     .addPlayersToInvite(invitees);
+
             if (minAutoPlayers > 0) {
                 roomBuilder.setAutoMatchCriteria(
                         RoomConfig.createAutoMatchCriteria(minAutoPlayers, maxAutoPlayers, 0));
@@ -445,11 +462,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 // in this example, we take the simple approach and just leave the room:
                 Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
                         .leave(mJoinedRoomConfig, mRoom.getRoomId());
+                Log.i(TAG, "Left room because waiting room cancelled");
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             } else if (resultCode == GamesActivityResultCodes.RESULT_LEFT_ROOM) {
                 // player wants to leave the room.
                 Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
                         .leave(mJoinedRoomConfig, mRoom.getRoomId());
+                Log.i(TAG, "Left room because result left waiting room");
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             }
         } else if (requestCode == RC_INVITATION_INBOX) {
@@ -479,6 +498,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         signOut();
         Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
                 .leave(mJoinedRoomConfig, mRoom.getRoomId());
+        Log.i(TAG, "Left room in onDestroy");
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
@@ -534,7 +554,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void invitePlayers() {
         // launch the player selection screen
         // minimum: 1 other player; maximum: 3 other players
-        Games.getRealTimeMultiplayerClient(this, GoogleSignIn.getLastSignedInAccount(this))
+        Games.getRealTimeMultiplayerClient(this, mGoogleSignInAccount)
                 .getSelectOpponentsIntent(1, 3, true)
                 .addOnSuccessListener(new OnSuccessListener<Intent>() {
                     @Override
@@ -570,6 +590,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 .addOnSuccessListener(new OnSuccessListener<Intent>() {
                     @Override
                     public void onSuccess(Intent intent) {
+                        Log.i(TAG, "showing waiting room UI");
                         startActivityForResult(intent, RC_WAITING_ROOM);
                     }
                 });
@@ -613,7 +634,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     void sendMessage(Message message) {
+<<<<<<< HEAD
 
+=======
+        String messageString = mMapper.toJson(message, Message.class);
+        byte[] messageData;
+        try {
+            messageData = messageString.getBytes("UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            Log.e(TAG, "Could not encode " + messageString + " as UTF-8");
+            return;
+        }
+        sendToAllReliably(messageData);
+>>>>>>> acd1c714e27b5a153daf3ffbf6a7eb40219da1e9
     }
 
     // sends a byte array to all other players
@@ -631,6 +664,32 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             }
                         });
             }
+        }
+    }
+
+    private void onMessageReceived(byte[] messageData) {
+        String messageString = new String(messageData);
+        Log.i(TAG, "Message received: " + messageString);
+        Message message = mMapper.fromJson(messageString, Message.class);
+
+        if (message instanceof GuessMessage) {
+            GuessMessage guessMessage = (GuessMessage) message;
+            Log.i(TAG, "Got GuessMessage: " + guessMessage.getGuess());
+            final LinearLayout guessesFeed = (LinearLayout) findViewById(R.id.guessesFeed);
+            final ScrollView scrollLayout = (ScrollView) findViewById(R.id.messagesScrollView);
+
+            // set guess text in list view
+            TextView guessContent = new TextView(thisActivity);
+            guessContent.setText(guessMessage.getGuess());
+            guessesFeed.addView(guessContent);
+
+            // Scroll to bottom automatically
+            scrollLayout.post(new Runnable() {
+                @Override
+                public void run() {
+                    scrollLayout.fullScroll(View.FOCUS_DOWN);
+                }
+            });
         }
     }
 }
