@@ -7,8 +7,13 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
@@ -43,6 +48,9 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.martin.pictionary2.drawing.FingerPath;
+import com.martin.pictionary2.drawing.PaintView;
+import com.martin.pictionary2.messages.DrawingMessage;
 import com.martin.pictionary2.messages.GuessMessage;
 import com.martin.pictionary2.messages.Message;
 import com.martin.pictionary2.messages.MessageAdapter;
@@ -70,6 +78,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private String mMyParticipantId;
 
     private Gson mMapper;
+
+    // for drawing
+    private PaintView paintView;
 
     private GoogleSignInAccount mGoogleSignInAccount = null;
     private GoogleSignInOptions mGoogleSignInOptions = null;
@@ -287,6 +298,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     };
 
+    // For coloring and clearing the drawing board
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch(item.getItemId()) {
+            case R.id.clear:
+                paintView.clear();
+                return true;
+            case R.id.color:
+                paintView.color();
+                return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+    // ...
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -349,6 +383,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 return handled;
             }
         });
+
+        // TODO some kind of listener??
+        // drawing code...
+        paintView = findViewById(R.id.paintView);
+        DisplayMetrics metrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(metrics);
+        paintView.init(metrics, this);
+
+    }
+
+    public void sendMotionEvent(MotionEvent motionEvent) {
+        DrawingMessage message = new DrawingMessage(motionEvent);
+        sendMessage(message);
+    }
+
+    // TODO send to clear the drawing board
+    public void sendClear() {
 
     }
 
@@ -681,6 +732,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     scrollLayout.fullScroll(View.FOCUS_DOWN);
                 }
             });
+        } else if (message instanceof DrawingMessage) {
+            DrawingMessage dm = (DrawingMessage) message;
+            Log.i(TAG, "Got DrawingMessage");
+            paintView.onTouchEvent(dm.getMotionEvent());
         }
     }
 }
