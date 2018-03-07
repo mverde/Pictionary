@@ -344,11 +344,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         }
                     });
 
-<<<<<<< HEAD
-                    GuessMessage guess = new GuessMessage(v.getText().toString(), mMyParticipantId);
-//                    sendMessage(guess);
-=======
->>>>>>> acd1c714e27b5a153daf3ffbf6a7eb40219da1e9
                     handled = true;
                 }
                 return handled;
@@ -634,9 +629,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     void sendMessage(Message message) {
-<<<<<<< HEAD
-
-=======
         String messageString = mMapper.toJson(message, Message.class);
         byte[] messageData;
         try {
@@ -646,7 +638,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             return;
         }
         sendToAllReliably(messageData);
->>>>>>> acd1c714e27b5a153daf3ffbf6a7eb40219da1e9
     }
 
     // sends a byte array to all other players
