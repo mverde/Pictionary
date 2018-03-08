@@ -56,10 +56,14 @@ import com.martin.pictionary2.messages.DrawingMessage;
 import com.martin.pictionary2.messages.GuessMessage;
 import com.martin.pictionary2.messages.Message;
 import com.martin.pictionary2.messages.MessageAdapter;
+import com.martin.pictionary2.messages.TurnMessage;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -79,6 +83,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Room mRoom;
     private String mMyParticipantId;
 
+    // It is the player's turn when (match turn number % num participants == my turn index)
+    private int mMyTurnIndex;
+
     private Gson mMapper;
 
     // for drawing
@@ -86,6 +93,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private GoogleSignInAccount mGoogleSignInAccount = null;
     private GoogleSignInOptions mGoogleSignInOptions = null;
+
+    // All possible words for 8BitArtist
+    private String[] mAllWords;
+
+    // Word for this turn, if the player is the drawer
+    private String mTurnWord;
+
+    // Match turn number
+    private int mMatchTurnNumber = 0;
 
     private RoomConfig mJoinedRoomConfig;
     private RoomUpdateCallback mRoomUpdateCallback = new RoomUpdateCallback() {
@@ -219,12 +235,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         public void onPeersConnected(@Nullable Room room, @NonNull List<String> list) {
             mRoom = room;
+            Log.d(TAG, "onPeersConnected:" + room + ":" + list);
+            mRoom = room;
             Log.i(TAG, "Peers connected to room " + room.getRoomId());
             if (mPlaying) {
                 // add new player to an ongoing game
             } else if (shouldStartGame(room)) {
                 // set initial game state
-                mPlaying = true;
+//                mPlaying = true;
+//                startGame();
+                hideMenuButtons();
+                showStartButton();
             }
         }
 
@@ -331,6 +352,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.sign_out_button).setOnClickListener(this);
         findViewById(R.id.invite_players_button).setOnClickListener(this);
         findViewById(R.id.invitations_button).setOnClickListener(this);
+        findViewById(R.id.start_game_button).setOnClickListener(this);
         mGoogleSignInOptions = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN)
                 .requestProfile()
                 .build();
@@ -341,7 +363,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
             findViewById(R.id.invite_players_button).setVisibility(View.VISIBLE);
             findViewById(R.id.invitations_button).setVisibility(View.VISIBLE);
-            findViewById(R.id.guessText).setVisibility(View.VISIBLE);
+//            findViewById(R.id.guessText).setVisibility(View.VISIBLE);
             findViewById(R.id.guessesFeed).setVisibility(View.VISIBLE);
         } else {
             findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
@@ -393,6 +415,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         getWindowManager().getDefaultDisplay().getMetrics(metrics);
         paintView.init(metrics, this);
 
+        // Create array of all words
+        mAllWords = getResources().getString(R.string.all_words).split(",");
+
     }
 
     public void sendDrawingMessage(DrawingMessage message) {
@@ -435,6 +460,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             invitePlayers();
         } else if (view.getId() == R.id.invitations_button) {
             showInvitationInbox();
+        } else if (view.getId() == R.id.start_game_button) {
+            startMatch();
         }
     }
 
@@ -613,6 +640,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     // returns whether there are enough players to start the game
     boolean shouldStartGame(Room room) {
+        if (null == room) {
+            return false;
+        }
         int connectedPlayers = 0;
         for (Participant p : room.getParticipants()) {
             if (p.isConnectedToRoom()) {
@@ -738,6 +768,172 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             MotionEvent event =
                     MotionEvent.CREATOR.createFromParcel(parcel);
             paintView.handleMotionEvent(event, drawingMessage.getColor());
+        } else if (message instanceof TurnMessage) {
+            // TurnMessage - set all turn-specific data
+            TurnMessage msg = (TurnMessage) message;
+            mMatchTurnNumber = msg.getTurnNumber();
+            mTurnWord = msg.getCorrectWord();
+
+            updateTurnIndices();
+            beginMyTurn();
         }
     }
+
+    /**
+     * Pick a random word from the master word list.
+     *
+     * @return a randomly chosen word.
+     */
+    private String getRandomWord() {
+        List<String> result = new ArrayList<>();
+
+        Collections.addAll(result, mAllWords);
+        Random rand = new Random();
+        String rand_word = result.get(rand.nextInt(result.size()));
+
+        return rand_word;
+    }
+
+    /**
+     * Update the turn order so that each participant has a unique slot.
+     */
+    private void updateTurnIndices() {
+        // Get your turn order
+        mMyTurnIndex = mRoom.getParticipantIds().indexOf(mMyParticipantId);
+        Log.d(TAG, "My turn index: " + mMyTurnIndex);
+    }
+
+    /**
+     * Determines if the current player is drawing or guessing. Used to determine what UI to show
+     * and what messages to send.
+     *
+     * @return true if the current player is the artist, false otherwise.
+     */
+    private boolean isMyTurn() {
+        ArrayList<String> participants = mRoom.getParticipantIds();
+        int numParticipants = participants.size();
+        if (numParticipants == 0) {
+            Log.w(TAG, "isMyTurn: no participants - default to true.");
+            return true;
+        }
+        int participantTurnIndex = mMatchTurnNumber % numParticipants;
+
+        Log.d(TAG, String.format("isMyTurn: %d participants, turn #%d, my turn is #%d",
+                numParticipants, mMatchTurnNumber, mMyTurnIndex));
+        return (mMyTurnIndex == participantTurnIndex);
+    }
+
+    private void hideMenuButtons() {
+        findViewById(R.id.menuButtons).setVisibility(View.GONE);
+    }
+
+    private void showStartButton() {
+        findViewById(R.id.start_game_button).setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * Show the UI for the player who is currently acting as the artist.
+     */
+    private void setArtistUI() {
+        findViewById(R.id.guessText).setVisibility(View.GONE);
+
+        // TODO: mDrawView.setTouchEnabled(true);
+
+        ((TextView) findViewById(R.id.guessWord)).setText("Your word is: " + mTurnWord);
+        paintView.clear();
+    }
+
+    /**
+     * Show the UI for a non-artist player
+     */
+    private void setGuessingUI() {
+        findViewById(R.id.guessText).setVisibility(View.VISIBLE);
+        findViewById(R.id.guessWord).setVisibility(View.GONE);
+//        findViewById(R.id.colorChooser).setVisibility(View.GONE);
+//        findViewById(R.id.clearDoneLayout).setVisibility(View.GONE);
+
+        // Disable touch on drawview
+//        mDrawView.setTouchEnabled(false);
+//        enableGuessing(true);
+
+        // Set words, clear draw view
+//        resetWords(mTurnWords);
+//        mDrawView.clear();
+    }
+
+    /**
+     * Begin a turn where the player is drawing. Clear the DrawView and show the drawing UI.
+     */
+    private void beginArtistTurn() {
+        paintView.clear();
+        setArtistUI();
+
+        //updateViewVisibility();
+    }
+
+    private void beginGuessingTurn() {
+        paintView.clear();
+        setGuessingUI();
+//
+//        // Set up the progress dialog
+//        mGuessProgress.setProgress(30);
+//        mGuessProgressText.setText(String.valueOf(30));
+//
+//        // Decrement from 30 to 1, once every second
+//        Runnable decrementProgress = new Runnable() {
+//            @Override
+//            public void run() {
+//                int oldProgress = mGuessProgress.getProgress();
+//                if (!mHasGuessed && oldProgress > 1) {
+//                    mGuessProgress.setProgress(oldProgress - 1);
+//                    mGuessProgressText.setText(
+//                            mNearbyClient.getState() + ": " +
+//                                    String.valueOf(oldProgress - 1));
+//                    mGuessProgressHandler.postDelayed(this, 1000L);
+//
+//                }
+//            }
+//        };
+//        mGuessProgressHandler.removeCallbacksAndMessages(null);
+//        mGuessProgressHandler.postDelayed(decrementProgress, 1000L);
+//
+//        updateViewVisibility();
+    }
+
+    /**
+     * Begin the player's turn, calling the correct beginTurn function based on role
+     **/
+    private void beginMyTurn() {
+        Log.d(TAG, "beginMyTurn: " + isMyTurn());
+        if (isMyTurn()) {
+            beginArtistTurn();
+        } else {
+            beginGuessingTurn();
+        }
+    }
+
+    /**
+     * Begin a new match if there are enough players, and send a message to all other participants
+     * with the initial turn data
+     */
+    private void startMatch() {
+        if (shouldStartGame(mRoom)) {
+            updateTurnIndices();
+            mPlaying = true;
+
+            // If the player is the artist, choose a random word
+            if (isMyTurn()) {
+                // Pick word randomly
+                mTurnWord = getRandomWord();
+
+                // Send turn message to others
+                TurnMessage turnMessage = new TurnMessage(0, mTurnWord);
+                sendMessage(turnMessage);
+            }
+
+            beginMyTurn();
+        }
+    }
+
+
 }
