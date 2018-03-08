@@ -2,6 +2,7 @@ package com.martin.pictionary2;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.Parcel;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
@@ -50,6 +51,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.martin.pictionary2.drawing.FingerPath;
 import com.martin.pictionary2.drawing.PaintView;
+import com.martin.pictionary2.drawing.ParcelableUtil;
 import com.martin.pictionary2.messages.DrawingMessage;
 import com.martin.pictionary2.messages.GuessMessage;
 import com.martin.pictionary2.messages.Message;
@@ -393,8 +395,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     }
 
-    public void sendMotionEvent(MotionEvent motionEvent) {
-        DrawingMessage message = new DrawingMessage(motionEvent);
+    public void sendDrawingMessage(DrawingMessage message) {
         sendMessage(message);
     }
 
@@ -679,7 +680,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 });
     }
 
-    void sendMessage(Message message) {
+    private void sendMessage(Message message) {
         String messageString = mMapper.toJson(message, Message.class);
         byte[] messageData;
         try {
@@ -692,7 +693,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     // sends a byte array to all other players
-    void sendToAllReliably(byte[] message) {
+    private void sendToAllReliably(byte[] message) {
         for (String participantId : mRoom.getParticipantIds()) {
             if (!participantId.equals(mMyParticipantId)) {
                 Task<Integer> task = Games.
@@ -716,9 +717,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         if (message instanceof GuessMessage) {
             GuessMessage guessMessage = (GuessMessage) message;
-            Log.i(TAG, "Got GuessMessage: " + guessMessage.getGuess());
-            final LinearLayout guessesFeed = (LinearLayout) findViewById(R.id.guessesFeed);
-            final ScrollView scrollLayout = (ScrollView) findViewById(R.id.messagesScrollView);
+            final LinearLayout guessesFeed = findViewById(R.id.guessesFeed);
+            final ScrollView scrollLayout = findViewById(R.id.messagesScrollView);
 
             // set guess text in list view
             TextView guessContent = new TextView(thisActivity);
@@ -733,9 +733,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
             });
         } else if (message instanceof DrawingMessage) {
-            DrawingMessage dm = (DrawingMessage) message;
-            Log.i(TAG, "Got DrawingMessage");
-            paintView.onTouchEvent(dm.getMotionEvent());
+            DrawingMessage drawingMessage = (DrawingMessage) message;
+            Parcel parcel = ParcelableUtil.unmarshall(drawingMessage.getMotionEventData());
+            MotionEvent event =
+                    MotionEvent.CREATOR.createFromParcel(parcel);
+            paintView.handleMotionEvent(event, drawingMessage.getColor());
         }
     }
 }

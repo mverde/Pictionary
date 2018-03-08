@@ -7,6 +7,8 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -17,6 +19,7 @@ import com.flask.colorpicker.ColorPickerView;
 import com.flask.colorpicker.builder.ColorPickerClickListener;
 import com.flask.colorpicker.builder.ColorPickerDialogBuilder;
 import com.martin.pictionary2.MainActivity;
+import com.martin.pictionary2.messages.DrawingMessage;
 
 import java.util.ArrayList;
 
@@ -74,6 +77,10 @@ public class PaintView extends View {
         this.ma = ma;
     }
 
+    public void pushFingerPath(FingerPath fp) {
+        paths.add(fp);
+    }
+
     public void clear() {
         backgroundColor = DEFAULT_BG_COLOR;
         paths.clear();
@@ -81,7 +88,6 @@ public class PaintView extends View {
     }
 
     // TODO: message that says 'clear', 'undo', or 'new path'.
-
 
     public void color() {
         ColorPickerDialogBuilder
@@ -124,9 +130,9 @@ public class PaintView extends View {
         canvas.restore();
     }
 
-    private void touchStart(float x, float y) {
+    private void touchStart(float x, float y, int color) {
         mPath = new Path();
-        FingerPath fp = new FingerPath(currentColor, strokeWidth, mPath);
+        FingerPath fp = new FingerPath(color, strokeWidth, mPath);
         paths.add(fp);
 
         mPath.reset();
@@ -150,14 +156,13 @@ public class PaintView extends View {
         mPath.lineTo(mX, mY);
     }
 
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
+    public void handleMotionEvent(MotionEvent event, int color) {
         float x = event.getX();
         float y = event.getY();
 
         switch(event.getAction()) {
             case MotionEvent.ACTION_DOWN :
-                touchStart(x, y);
+                touchStart(x, y, color);
                 invalidate();
                 break;
             case MotionEvent.ACTION_MOVE :
@@ -169,8 +174,15 @@ public class PaintView extends View {
                 invalidate();
                 break;
         }
+    }
 
-        //ma.sendMotionEvent(event);
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        handleMotionEvent(event, currentColor);
+
+        DrawingMessage message = new DrawingMessage(ParcelableUtil.marshall(event), currentColor);
+        ma.sendDrawingMessage(message);
+
         return true;
     }
 }

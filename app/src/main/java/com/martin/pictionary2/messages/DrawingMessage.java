@@ -4,39 +4,40 @@ package com.martin.pictionary2.messages;
  * Created by desireelenart on 3/5/18.
  */
 
-import android.graphics.Bitmap;
+import android.os.Parcel;
 import android.view.MotionEvent;
 
-import com.martin.pictionary2.drawing.FingerPath;
-import com.martin.pictionary2.drawing.PaintView;
-import com.martin.pictionary2.DrawingCoordinate;
-
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-
 /**
- * Message that the artist has drawn a point and the recipient
- * should mirror it on their own DrawView instance.
- * DrawingCoordinate coordinate - the location of the drawn point.
- * int color - the index of the drawn color in the array of colors.
+ * Message that the artist has drawn a line and the receiver should mirror it in their own
+ * PaintView.
  */
 
 
 public class DrawingMessage extends Message {
-    private MotionEvent motionEvent;
+    private int color;
+    private byte[] motionEventData;
 
     public DrawingMessage() {
     }
 
-    public DrawingMessage(MotionEvent motionEvent) {
-        this.motionEvent = motionEvent;
+    public DrawingMessage(byte[] motionEventData, int color) {
+        this.motionEventData = motionEventData;
+        this.color = color;
     }
 
-    public MotionEvent getMotionEvent() {
-        return motionEvent;
+    public byte[] getMotionEventData() {
+        return motionEventData;
     }
 
-    public void setMotionEvent() {
-        this.motionEvent = motionEvent;
+    public void setMotionEventData(byte[] motionEventData) {
+        this.motionEventData = motionEventData;
+    }
+
+    public int getColor() {
+        return color;
+    }
+
+    public void setColor(int color) {
+        this.color = color;
     }
 }
