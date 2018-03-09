@@ -13,14 +13,18 @@ package com.martin.pictionary2.messages;
 
 public class TurnMessage extends Message {
     private int turnNumber;
-    private String correctWord;
+    private String guesserId;
+    private String prevWord;
+    private boolean newGame;
 
     public TurnMessage() {
     }
 
-    public TurnMessage(int turnNumber, String correctWord) {
+    public TurnMessage(int turnNumber, String guesserId, String prevWord, boolean isNewGame) {
         this.turnNumber = turnNumber;
-        this.correctWord = correctWord;
+        this.guesserId = guesserId;
+        this.prevWord = prevWord;
+        this.newGame = isNewGame;
     }
 
     public int getTurnNumber() {
@@ -31,12 +35,28 @@ public class TurnMessage extends Message {
         this.turnNumber = turnNumber;
     }
 
-    public String getCorrectWord() {
-        return correctWord;
+    public String getGuesserId() {
+        return guesserId;
     }
 
-    public void setCorrectWord(String correctWord) {
-        this.correctWord = correctWord;
+    public void setGuesserId(String correctWord) {
+        this.guesserId = correctWord;
+    }
+
+    public boolean getNewGame() {
+        return newGame;
+    }
+
+    public void setNewGame(boolean newGame) {
+        this.newGame = newGame;
+    }
+
+    public String getPrevWord() {
+        return this.prevWord;
+    }
+
+    public void setPrevWord(String prevWord) {
+        this.prevWord = prevWord;
     }
 }
 
