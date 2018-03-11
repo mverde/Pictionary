@@ -2,6 +2,7 @@ package com.martin.pictionary2;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.CountDownTimer;
 import android.os.Parcel;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -105,6 +106,32 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     // Current match score
     private int mMyScore = 0;
+
+    // View that shows the counter
+    private TextView mCounterView;
+
+    // Countdown timer for each turn
+    private CountDownTimer mCountDownTimer = new CountDownTimer(600000, 1000) {
+        @Override
+        public void onTick(long l) {
+            if (mCounterView != null) {
+                mCounterView.setText(Long.toString(l / 1000));
+            }
+        }
+
+        @Override
+        public void onFinish() {
+            if (isMyTurn()) {
+                mMatchTurnNumber += 1;
+                // Send turn message to others
+                TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, null, mTurnWord, false);
+                sendMessage(turnMessage);
+                updateTurnIndices();
+                beginMyTurn();
+            }
+            addToMessageFeed("Time's up! Next turn!");
+        }
+    };
 
     private RoomConfig mJoinedRoomConfig;
     private RoomUpdateCallback mRoomUpdateCallback = new RoomUpdateCallback() {
@@ -421,6 +448,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // Create array of all words
         mAllWords = getResources().getString(R.string.all_words).split(",");
 
+        mCounterView = (TextView) findViewById(R.id.countDown);
     }
 
     public void sendDrawingMessage(DrawingMessage message) {
@@ -750,21 +778,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         if (message instanceof GuessMessage) {
             GuessMessage guessMessage = (GuessMessage) message;
-            final LinearLayout guessesFeed = findViewById(R.id.guessesFeed);
-            final ScrollView scrollLayout = findViewById(R.id.messagesScrollView);
-
-            // set guess text in list view
-            TextView guessContent = new TextView(thisActivity);
-            guessContent.setText(guessMessage.getGuess());
-            guessesFeed.addView(guessContent);
-
-            // Scroll to bottom automatically
-            scrollLayout.post(new Runnable() {
-                @Override
-                public void run() {
-                    scrollLayout.fullScroll(View.FOCUS_DOWN);
-                }
-            });
+            addToMessageFeed(guessMessage.getGuess());
 
             // TODO: Add logic for ending game?
             if (isMyTurn()) {
@@ -792,21 +806,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             if (msg.getPrevWord() != null) {
                 // Show the guesser what the correct word was
-                final LinearLayout guessesFeed = findViewById(R.id.guessesFeed);
-                final ScrollView scrollLayout = findViewById(R.id.messagesScrollView);
-
-                // set guess text in list view
-                TextView guessContent = new TextView(thisActivity);
-                guessContent.setText("The correct word was: " + msg.getPrevWord());
-                guessesFeed.addView(guessContent);
-
-                // Scroll to bottom automatically
-                scrollLayout.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        scrollLayout.fullScroll(View.FOCUS_DOWN);
-                    }
-                });
+                addToMessageFeed("The correct word was: " + msg.getPrevWord());
             }
 
             // If this is a new game, set score to 0. Otherwise, if this guesser guessed correctly,
@@ -819,21 +819,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mMyScore += 100;
 
                 // Indicate to guesser that guesser is correct
-                final LinearLayout guessesFeed = findViewById(R.id.guessesFeed);
-                final ScrollView scrollLayout = findViewById(R.id.messagesScrollView);
+                addToMessageFeed("You're correct! Your score is: " + mMyScore);
 
-                // set guess text in list view
-                TextView guessContent = new TextView(thisActivity);
-                guessContent.setText("You're correct! Your score is: " + mMyScore);
-                guessesFeed.addView(guessContent);
-
-                // Scroll to bottom automatically
-                scrollLayout.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        scrollLayout.fullScroll(View.FOCUS_DOWN);
-                    }
-                });
             }
 
             if (isMyTurn()) {
@@ -904,6 +891,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.guessWord).setVisibility(View.VISIBLE);
         findViewById(R.id.paintView).setVisibility(View.VISIBLE);
         findViewById(R.id.start_game_button).setVisibility(View.GONE);
+        findViewById(R.id.countDown).setVisibility(View.VISIBLE);
 
 
         ((TextView) findViewById(R.id.guessWord)).setText("Your word is: " + mTurnWord);
@@ -919,6 +907,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.guessWord).setVisibility(View.GONE);
         findViewById(R.id.start_game_button).setVisibility(View.GONE);
         findViewById(R.id.paintView).setVisibility(View.VISIBLE);
+        findViewById(R.id.countDown).setVisibility(View.VISIBLE);
         // Show the guesser what the correct word was
         final LinearLayout guessesFeed = findViewById(R.id.guessesFeed);
         final ScrollView scrollLayout = findViewById(R.id.messagesScrollView);
@@ -965,6 +954,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } else {
             beginGuessingTurn();
         }
+        mCountDownTimer.start();
     }
 
     /**
@@ -992,5 +982,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    private void addToMessageFeed(String msg) {
+        final LinearLayout guessesFeed = findViewById(R.id.guessesFeed);
+        final ScrollView scrollLayout = findViewById(R.id.messagesScrollView);
+
+        // set the text in the list view
+        TextView guessContent = new TextView(thisActivity);
+        guessContent.setText(msg);
+        guessesFeed.addView(guessContent);
+
+        // Scroll to bottom automatically
+        scrollLayout.post(new Runnable() {
+            @Override
+            public void run() {
+                scrollLayout.fullScroll(View.FOCUS_DOWN);
+            }
+        });
+    }
 
 }
