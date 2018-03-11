@@ -44,6 +44,7 @@ public class PaintView extends View {
     private Paint mBitmapPaint = new Paint(Paint.DITHER_FLAG);
     private Context context;
     private MainActivity ma;
+    private boolean touchEnabled = true;
 
     public PaintView(Context context) {
         this(context, null);
@@ -176,8 +177,19 @@ public class PaintView extends View {
         }
     }
 
+    public void enableTouch() {
+        this.touchEnabled = true;
+    }
+
+    public void disableTouch() {
+        this.touchEnabled = false;
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        if (!this.touchEnabled) {
+            return false;
+        }
         handleMotionEvent(event, currentColor);
 
         DrawingMessage message = new DrawingMessage(ParcelableUtil.marshall(event), currentColor);

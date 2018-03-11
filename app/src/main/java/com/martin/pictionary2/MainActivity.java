@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.os.CountDownTimer;
 import android.os.Parcel;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -110,6 +111,35 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     // Match turn number
     private int mMatchTurnNumber = 0;
+
+    // Current match score
+    private int mMyScore = 0;
+
+    // View that shows the counter
+    private TextView mCounterView;
+
+    // Countdown timer for each turn
+    private CountDownTimer mCountDownTimer = new CountDownTimer(600000, 1000) {
+        @Override
+        public void onTick(long l) {
+            if (mCounterView != null) {
+                mCounterView.setText(Long.toString(l / 1000));
+            }
+        }
+
+        @Override
+        public void onFinish() {
+            if (isMyTurn()) {
+                mMatchTurnNumber += 1;
+                // Send turn message to others
+                TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, null, mTurnWord, false);
+                sendMessage(turnMessage);
+                updateTurnIndices();
+                beginMyTurn();
+            }
+            addToMessageFeed("Time's up! Next turn!");
+        }
+    };
 
     private RoomConfig mJoinedRoomConfig;
     private RoomUpdateCallback mRoomUpdateCallback = new RoomUpdateCallback() {
@@ -428,6 +458,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // Create array of all words
         mAllWords = getResources().getString(R.string.all_words).split(",");
 
+        mCounterView = (TextView) findViewById(R.id.countDown);
     }
 
     public void showScoreBoard() {
@@ -854,33 +885,54 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         if (message instanceof GuessMessage) {
             GuessMessage guessMessage = (GuessMessage) message;
-            final LinearLayout guessesFeed = findViewById(R.id.guessesFeed);
-            final ScrollView scrollLayout = findViewById(R.id.messagesScrollView);
+            addToMessageFeed(guessMessage.getGuess());
 
-            // set guess text in list view
-            TextView guessContent = new TextView(thisActivity);
-            guessContent.setText(guessMessage.getDisplayName() + ": " + guessMessage.getGuess());
-            guessesFeed.addView(guessContent);
-
-            // Scroll to bottom automatically
-            scrollLayout.post(new Runnable() {
-                @Override
-                public void run() {
-                    scrollLayout.fullScroll(View.FOCUS_DOWN);
+            // TODO: Add logic for ending game?
+            if (isMyTurn()) {
+                if (guessMessage.getGuess().toLowerCase().equals(mTurnWord)) {
+                    Log.d(TAG, "Received a correct guess: " + guessMessage.getGuess() + " from: " + guessMessage.getGuesserId());
+                    mMatchTurnNumber += 1;
+                    // Send turn message to others
+                    TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, guessMessage.getGuesserId(), mTurnWord, false);
+                    sendMessage(turnMessage);
+                    updateTurnIndices();
+                    beginMyTurn();
                 }
-            });
+            }
         } else if (message instanceof DrawingMessage) {
             DrawingMessage drawingMessage = (DrawingMessage) message;
             Parcel parcel = ParcelableUtil.unmarshall(drawingMessage.getMotionEventData());
             MotionEvent event =
                     MotionEvent.CREATOR.createFromParcel(parcel);
             paintView.handleMotionEvent(event, drawingMessage.getColor());
+
         } else if (message instanceof TurnMessage) {
             // TurnMessage - set all turn-specific data
             TurnMessage msg = (TurnMessage) message;
             mMatchTurnNumber = msg.getTurnNumber();
-            mTurnWord = msg.getCorrectWord();
 
+            if (msg.getPrevWord() != null) {
+                // Show the guesser what the correct word was
+                addToMessageFeed("The correct word was: " + msg.getPrevWord());
+            }
+
+            // If this is a new game, set score to 0. Otherwise, if this guesser guessed correctly,
+            // increment guesser's score
+            if (msg.getNewGame()) {
+                mMyScore = 0;
+                mMatchTurnNumber = 0;
+                updateTurnIndices();
+            } else if (mMyParticipantId.equals(msg.getGuesserId())) {
+                mMyScore += 100;
+
+                // Indicate to guesser that guesser is correct
+                addToMessageFeed("You're correct! Your score is: " + mMyScore);
+
+            }
+
+            if (isMyTurn()) {
+                mTurnWord = getRandomWord();
+            }
             updateTurnIndices();
             beginMyTurn();
         }
@@ -943,11 +995,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      */
     private void setArtistUI() {
         findViewById(R.id.guessText).setVisibility(View.GONE);
+        findViewById(R.id.guessWord).setVisibility(View.VISIBLE);
+        findViewById(R.id.paintView).setVisibility(View.VISIBLE);
+        findViewById(R.id.start_game_button).setVisibility(View.GONE);
+        findViewById(R.id.countDown).setVisibility(View.VISIBLE);
 
-        // TODO: mDrawView.setTouchEnabled(true);
 
         ((TextView) findViewById(R.id.guessWord)).setText("Your word is: " + mTurnWord);
         paintView.clear();
+        paintView.enableTouch();
     }
 
     /**
@@ -956,55 +1012,43 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void setGuessingUI() {
         findViewById(R.id.guessText).setVisibility(View.VISIBLE);
         findViewById(R.id.guessWord).setVisibility(View.GONE);
-//        findViewById(R.id.colorChooser).setVisibility(View.GONE);
-//        findViewById(R.id.clearDoneLayout).setVisibility(View.GONE);
+        findViewById(R.id.start_game_button).setVisibility(View.GONE);
+        findViewById(R.id.paintView).setVisibility(View.VISIBLE);
+        findViewById(R.id.countDown).setVisibility(View.VISIBLE);
+        // Show the guesser what the correct word was
+        final LinearLayout guessesFeed = findViewById(R.id.guessesFeed);
+        final ScrollView scrollLayout = findViewById(R.id.messagesScrollView);
 
-        // Disable touch on drawview
-//        mDrawView.setTouchEnabled(false);
-//        enableGuessing(true);
+        // set guess text in list view
+        TextView guessContent = new TextView(thisActivity);
+        guessContent.setText("Your turn to guess");
+        guessesFeed.addView(guessContent);
 
-        // Set words, clear draw view
-//        resetWords(mTurnWords);
-//        mDrawView.clear();
+        // Scroll to bottom automatically
+        scrollLayout.post(new Runnable() {
+            @Override
+            public void run() {
+                scrollLayout.fullScroll(View.FOCUS_DOWN);
+            }
+        });
+
+        paintView.disableTouch();
     }
 
     /**
-     * Begin a turn where the player is drawing. Clear the DrawView and show the drawing UI.
+     * Begin a turn where the player is drawing.
      */
     private void beginArtistTurn() {
         paintView.clear();
         setArtistUI();
-
-        //updateViewVisibility();
     }
 
+    /**
+     * Begin a turn where the player is guessing.
+     */
     private void beginGuessingTurn() {
         paintView.clear();
         setGuessingUI();
-//
-//        // Set up the progress dialog
-//        mGuessProgress.setProgress(30);
-//        mGuessProgressText.setText(String.valueOf(30));
-//
-//        // Decrement from 30 to 1, once every second
-//        Runnable decrementProgress = new Runnable() {
-//            @Override
-//            public void run() {
-//                int oldProgress = mGuessProgress.getProgress();
-//                if (!mHasGuessed && oldProgress > 1) {
-//                    mGuessProgress.setProgress(oldProgress - 1);
-//                    mGuessProgressText.setText(
-//                            mNearbyClient.getState() + ": " +
-//                                    String.valueOf(oldProgress - 1));
-//                    mGuessProgressHandler.postDelayed(this, 1000L);
-//
-//                }
-//            }
-//        };
-//        mGuessProgressHandler.removeCallbacksAndMessages(null);
-//        mGuessProgressHandler.postDelayed(decrementProgress, 1000L);
-//
-//        updateViewVisibility();
     }
 
     /**
@@ -1017,6 +1061,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } else {
             beginGuessingTurn();
         }
+        mCountDownTimer.start();
     }
 
     /**
@@ -1042,15 +1087,34 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (isMyTurn()) {
                 // Pick word randomly
                 mTurnWord = getRandomWord();
-
-                // Send turn message to others
-                TurnMessage turnMessage = new TurnMessage(0, mTurnWord);
-                sendMessage(turnMessage);
             }
 
+            mMatchTurnNumber = 0;
+            // Send turn message to others
+            TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, null, null, true);
+            sendMessage(turnMessage);
+
+            mMyScore = 0;
             beginMyTurn();
         }
     }
 
+    private void addToMessageFeed(String msg) {
+        final LinearLayout guessesFeed = findViewById(R.id.guessesFeed);
+        final ScrollView scrollLayout = findViewById(R.id.messagesScrollView);
+
+        // set the text in the list view
+        TextView guessContent = new TextView(thisActivity);
+        guessContent.setText(msg);
+        guessesFeed.addView(guessContent);
+
+        // Scroll to bottom automatically
+        scrollLayout.post(new Runnable() {
+            @Override
+            public void run() {
+                scrollLayout.fullScroll(View.FOCUS_DOWN);
+            }
+        });
+    }
 
 }
