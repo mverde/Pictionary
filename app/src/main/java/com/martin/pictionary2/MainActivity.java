@@ -58,10 +58,12 @@ import com.google.gson.GsonBuilder;
 import com.martin.pictionary2.drawing.FingerPath;
 import com.martin.pictionary2.drawing.PaintView;
 import com.martin.pictionary2.drawing.ParcelableUtil;
+import com.martin.pictionary2.messages.ClearMessage;
 import com.martin.pictionary2.messages.DrawingMessage;
 import com.martin.pictionary2.messages.GuessMessage;
 import com.martin.pictionary2.messages.Message;
 import com.martin.pictionary2.messages.MessageAdapter;
+import com.martin.pictionary2.messages.UndoMessage;
 import com.martin.pictionary2.messages.TurnMessage;
 
 import java.io.UnsupportedEncodingException;
@@ -372,9 +374,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         switch(item.getItemId()) {
             case R.id.clear:
                 paintView.clear();
+                sendClear(new ClearMessage());
                 return true;
             case R.id.color:
                 paintView.color();
+                return true;
+            case R.id.undo:
+                paintView.undo();
+                sendUndo(new UndoMessage());
                 return true;
         }
 
@@ -562,10 +569,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         sendMessage(message);
     }
 
-    // TODO send to clear the drawing board
-    public void sendClear() {
+    public void sendClear(ClearMessage message) { sendMessage(message); }
 
-    }
+    public void sendUndo(UndoMessage message) { sendMessage(message); }
 
     @Override
     protected void onResume() {
@@ -905,7 +911,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             MotionEvent event =
                     MotionEvent.CREATOR.createFromParcel(parcel);
             paintView.handleMotionEvent(event, drawingMessage.getColor());
-
+        } else if (message instanceof ClearMessage) {
+            paintView.clear();
+        } else if (message instanceof UndoMessage) {
+            paintView.undo();
         } else if (message instanceof TurnMessage) {
             // TurnMessage - set all turn-specific data
             TurnMessage msg = (TurnMessage) message;

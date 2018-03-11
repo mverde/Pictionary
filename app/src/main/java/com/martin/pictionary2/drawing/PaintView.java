@@ -19,7 +19,9 @@ import com.flask.colorpicker.ColorPickerView;
 import com.flask.colorpicker.builder.ColorPickerClickListener;
 import com.flask.colorpicker.builder.ColorPickerDialogBuilder;
 import com.martin.pictionary2.MainActivity;
+import com.martin.pictionary2.messages.ClearMessage;
 import com.martin.pictionary2.messages.DrawingMessage;
+import com.martin.pictionary2.messages.UndoMessage;
 
 import java.util.ArrayList;
 
@@ -78,8 +80,12 @@ public class PaintView extends View {
         this.ma = ma;
     }
 
-    public void pushFingerPath(FingerPath fp) {
-        paths.add(fp);
+    public void undo() {
+        if (paths.size() > 0) {
+            backgroundColor = DEFAULT_BG_COLOR;
+            paths.remove(paths.size() - 1);
+            invalidate();
+        }
     }
 
     public void clear() {
