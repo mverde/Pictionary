@@ -2,6 +2,8 @@ package com.martin.pictionary2;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Parcel;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -10,12 +12,15 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
@@ -63,6 +68,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -83,6 +89,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Room mRoom;
     private String mMyParticipantId;
 
+    // Dictionary with DisplayName and Score for each player
+    private Map<String, Integer> mDisplayNamesToScores = new HashMap<String, Integer>();
+
     // It is the player's turn when (match turn number % num participants == my turn index)
     private int mMyTurnIndex;
 
@@ -94,7 +103,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private GoogleSignInAccount mGoogleSignInAccount = null;
     private GoogleSignInOptions mGoogleSignInOptions = null;
 
-    // All possible words for 8BitArtist
     private String[] mAllWords;
 
     // Word for this turn, if the player is the drawer
@@ -365,6 +373,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             findViewById(R.id.invitations_button).setVisibility(View.VISIBLE);
 //            findViewById(R.id.guessText).setVisibility(View.VISIBLE);
             findViewById(R.id.guessesFeed).setVisibility(View.VISIBLE);
+
         } else {
             findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
             findViewById(R.id.sign_out_button).setVisibility(View.GONE);
@@ -378,6 +387,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         final LinearLayout guessesFeed = (LinearLayout) findViewById(R.id.guessesFeed);
         final ScrollView scrollLayout = (ScrollView) findViewById(R.id.messagesScrollView);
 
+
         editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
@@ -385,9 +395,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if (actionId == EditorInfo.IME_ACTION_SEND) {
                     // set guess text in list view
                     TextView guessContent = new TextView(thisActivity);
-                    guessContent.setText(v.getText().toString());
+                    guessContent.setText( mRoom.getParticipant(mMyParticipantId).getDisplayName() + ": " + v.getText().toString());
                     guessesFeed.addView(guessContent);
-                    GuessMessage guess = new GuessMessage(v.getText().toString(), mMyParticipantId);
+                    GuessMessage guess = new GuessMessage(mRoom.getParticipant(mMyParticipantId).getDisplayName() ,v.getText().toString(), mMyParticipantId);
                     sendMessage(guess);
                     editText.setText("");
                     editText.setEnabled(false);
@@ -417,6 +427,103 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         // Create array of all words
         mAllWords = getResources().getString(R.string.all_words).split(",");
+
+    }
+
+    public void showScoreBoard() {
+        Log.i(TAG, "DisplayNames & Scores: ");
+        LinearLayout scoreBoard = (LinearLayout) findViewById(R.id.scoreBoard);
+        scoreBoard.setVisibility(View.VISIBLE);
+
+        for (Map.Entry<String, Integer> entry : mDisplayNamesToScores.entrySet()) {
+            Log.i(TAG,"Key = " + entry.getKey() + ", Value = " + entry.getValue());
+
+//            TextView scores = new TextView(thisActivity);
+//            scores.setText( entry.getKey() + ": " + entry.getValue().toString());
+//            scoreBoard.addView(scores);
+        }
+    }
+
+    public void showScoreBoardDummy() {
+
+        for (Map.Entry<String, Integer> entry : mDisplayNamesToScores.entrySet()) {
+            Log.i(TAG,"Key = " + entry.getKey() + ", Value = " + entry.getValue());
+        }
+
+        LinearLayout scoreBoardContainer = (LinearLayout) findViewById(R.id.scoreBoardContainer);
+        scoreBoardContainer.setVisibility(View.VISIBLE);
+
+        LinearLayout scoreBoard = (LinearLayout) findViewById(R.id.scoreBoard);
+
+
+        LinearLayout nameScoreContainer = new LinearLayout(thisActivity);
+        nameScoreContainer.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        LinearLayout.LayoutParams textParam = new LinearLayout.LayoutParams
+                (LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
+        nameScoreContainer.setLayoutParams(params);
+
+
+        TextView score = new TextView(thisActivity);
+        TextView name = new TextView(thisActivity);
+
+        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+        name.setLayoutParams(textParam);
+        name.setText("Desiree");
+        name.setTextColor(Color.rgb(255, 61, 120));
+        name.setTypeface(Typeface.DEFAULT_BOLD);
+
+
+
+
+        score.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+        score.setLayoutParams(textParam);
+        score.setText("0");
+        score.setTextColor(Color.rgb(255, 67, 95));
+
+        scoreBoard.addView(nameScoreContainer);
+        nameScoreContainer.addView(name);
+        nameScoreContainer.addView(score);
+
+
+        // NEW PERSON
+//        LinearLayout nameScoreContainer2 = new LinearLayout(thisActivity);
+//        nameScoreContainer2.setLayoutParams(new WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT,
+//                WindowManager.LayoutParams.MATCH_PARENT));
+//        nameScoreContainer2.setOrientation(LinearLayout.HORIZONTAL);
+//        TextView score2 = new TextView(thisActivity);
+//        TextView name2 = new TextView(thisActivity);
+//
+//        name2.setText( "John");
+//        name2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+//        name2.setLayoutParams(new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT,
+//                WindowManager.LayoutParams.WRAP_CONTENT, 1));
+//        name2.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
+//        name2.setTextColor(Color.rgb(255, 67, 95));
+//
+//
+//        score2.setText( "0");
+//        score2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+//        score2.setLayoutParams(new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT,
+//                WindowManager.LayoutParams.WRAP_CONTENT, 1));
+//        score2.setTextColor(Color.rgb(255, 67, 95));
+
+//        Integer width1 = name.getWidth();
+//        Integer width2 = name2.getWidth();
+//        Integer width = Math.max(width1, width2);
+
+        // ADD TO LAYOUT
+//        name.setWidth(width);
+//        name2.setWidth(width);
+
+
+
+//        nameScoreContainer2.addView(name2);
+//        nameScoreContainer2.addView(score2);
+
+//        scoreBoard.addView(nameScoreContainer2);
+
 
     }
 
@@ -752,7 +859,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             // set guess text in list view
             TextView guessContent = new TextView(thisActivity);
-            guessContent.setText(guessMessage.getGuess());
+            guessContent.setText(guessMessage.getDisplayName() + ": " + guessMessage.getGuess());
             guessesFeed.addView(guessContent);
 
             // Scroll to bottom automatically
@@ -916,10 +1023,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      * Begin a new match if there are enough players, and send a message to all other participants
      * with the initial turn data
      */
+
+    private void getDisplayNames() {
+        for (String participantId : mRoom.getParticipantIds()) {
+            mDisplayNamesToScores.put(mRoom.getParticipant(participantId).getDisplayName(), 0);
+        }
+    }
+
     private void startMatch() {
         if (shouldStartGame(mRoom)) {
             updateTurnIndices();
+            getDisplayNames();
+            showScoreBoardDummy();
             mPlaying = true;
+
 
             // If the player is the artist, choose a random word
             if (isMyTurn()) {
