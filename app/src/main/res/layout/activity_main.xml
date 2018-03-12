@@ -42,11 +42,23 @@
 
             </LinearLayout>
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:layout_marginTop="20dp"
+                android:gravity="center_horizontal"
+                android:text="Next Game starting in "
+                android:textAlignment="center"
+                android:textColor="@android:color/black"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
             <Button
                 android:id="@+id/play_again_button"
                 style="@style/SignInButton"
                 android:layout_gravity="center_horizontal"
-                android:text="Play Again"
+                android:text="Leave Game"
                 android:textSize="18sp" />
 
         </LinearLayout>
