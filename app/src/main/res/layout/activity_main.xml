@@ -40,122 +40,14 @@
                 android:paddingRight="20dp"
                 android:paddingTop="10dp">
 
-                <!--<LinearLayout-->
-                    <!--android:layout_width="match_parent"-->
-                    <!--android:layout_height="match_parent"-->
-                    <!--android:orientation="horizontal">-->
-
-                    <!--<TextView-->
-                        <!--android:layout_width="wrap_content"-->
-                        <!--android:layout_height="wrap_content"-->
-                        <!--android:layout_weight="1"-->
-                        <!--android:paddingBottom="10dp"-->
-                        <!--android:paddingTop="10dp"-->
-                        <!--android:text="Desiree"-->
-                        <!--android:textAlignment="textStart"-->
-                        <!--android:textAllCaps="true"-->
-                        <!--android:textColor="@color/colorAccent"-->
-                        <!--android:textSize="30sp"-->
-                        <!--android:textStyle="bold|italic" />-->
-
-                    <!--<TextView-->
-                        <!--android:layout_width="wrap_content"-->
-                        <!--android:layout_height="wrap_content"-->
-                        <!--android:layout_weight="1"-->
-                        <!--android:text="0"-->
-                        <!--android:textColor="@color/colorAccent"-->
-                        <!--android:textSize="30sp" />-->
-
-                <!--</LinearLayout>-->
-
-                <!--<LinearLayout-->
-                    <!--android:layout_width="match_parent"-->
-                    <!--android:layout_height="match_parent"-->
-                    <!--android:orientation="horizontal">-->
-
-                    <!--<TextView-->
-                        <!--android:layout_width="wrap_content"-->
-                        <!--android:layout_height="wrap_content"-->
-                        <!--android:layout_weight="1"-->
-                        <!--android:paddingBottom="10dp"-->
-                        <!--android:paddingTop="10dp"-->
-                        <!--android:text="Martin"-->
-                        <!--android:textAlignment="textStart"-->
-                        <!--android:textAllCaps="true"-->
-                        <!--android:textColor="@color/colorAccent"-->
-                        <!--android:textSize="30sp"-->
-                        <!--android:textStyle="bold|italic" />-->
-
-                    <!--<TextView-->
-                        <!--android:layout_width="wrap_content"-->
-                        <!--android:layout_height="wrap_content"-->
-                        <!--android:layout_weight="1"-->
-                        <!--android:text="Score"-->
-                        <!--android:textColor="@color/colorAccent"-->
-                        <!--android:textSize="30sp"-->
-                        <!--tools:text="0" />-->
-
-                <!--</LinearLayout>-->
-
-                <!--<LinearLayout-->
-                    <!--android:layout_width="match_parent"-->
-                    <!--android:layout_height="match_parent"-->
-                    <!--android:orientation="horizontal">-->
-
-                    <!--<TextView-->
-                        <!--android:layout_width="wrap_content"-->
-                        <!--android:layout_height="wrap_content"-->
-                        <!--android:layout_weight="1"-->
-                        <!--android:paddingBottom="10dp"-->
-                        <!--android:paddingTop="10dp"-->
-                        <!--android:text="Thomas"-->
-                        <!--android:textAlignment="textStart"-->
-                        <!--android:textAllCaps="true"-->
-                        <!--android:textColor="@color/colorAccent"-->
-                        <!--android:textSize="30sp"-->
-                        <!--android:textStyle="bold|italic" />-->
-
-                    <!--<TextView-->
-                        <!--android:layout_width="wrap_content"-->
-                        <!--android:layout_height="wrap_content"-->
-                        <!--android:layout_weight="1"-->
-                        <!--android:text="Score"-->
-                        <!--android:textColor="@color/colorAccent"-->
-                        <!--android:textSize="30sp"-->
-                        <!--tools:text="0" />-->
-
-                <!--</LinearLayout>-->
-
-                <!--<LinearLayout-->
-                    <!--android:layout_width="match_parent"-->
-                    <!--android:layout_height="match_parent"-->
-                    <!--android:orientation="horizontal">-->
-
-                    <!--<TextView-->
-                        <!--android:layout_width="wrap_content"-->
-                        <!--android:layout_height="wrap_content"-->
-                        <!--android:layout_weight="1"-->
-                        <!--android:paddingBottom="10dp"-->
-                        <!--android:paddingTop="10dp"-->
-                        <!--android:text="John"-->
-                        <!--android:textAlignment="textStart"-->
-                        <!--android:textAllCaps="true"-->
-                        <!--android:textColor="@color/colorAccent"-->
-                        <!--android:textSize="30sp"-->
-                        <!--android:textStyle="bold|italic" />-->
-
-                    <!--<TextView-->
-                        <!--android:layout_width="wrap_content"-->
-                        <!--android:layout_height="wrap_content"-->
-                        <!--android:layout_weight="1"-->
-                        <!--android:text="Score"-->
-                        <!--android:textColor="@color/colorAccent"-->
-                        <!--android:textSize="30sp"-->
-                        <!--tools:text="0" />-->
-
-                <!--</LinearLayout>-->
-
             </LinearLayout>
+
+            <Button
+                android:id="@+id/play_again_button"
+                style="@style/SignInButton"
+                android:layout_gravity="center_horizontal"
+                android:text="Play Again"
+                android:textSize="18sp" />
 
         </LinearLayout>
 
@@ -164,17 +56,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
-
-            <!--<TextView-->
-                <!--android:id="@+id/drawingWord"-->
-                <!--android:layout_width="wrap_content"-->
-                <!--android:layout_height="wrap_content"-->
-                <!--android:layout_centerInParent="true"-->
-                <!--android:gravity="center_horizontal"-->
-                <!--android:paddingLeft="10dp"-->
-                <!--android:text=""-->
-                <!--android:textSize="20sp"-->
-                <!--android:visibility="gone" />-->
 
             <com.google.android.gms.common.SignInButton
                 android:id="@+id/sign_in_button"
@@ -204,14 +85,48 @@
 
         </LinearLayout>
 
-        <Button
-            android:id="@+id/start_game_button"
-            style="@style/SignInButton"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:layout_centerInParent="true"
-            android:layout_marginTop="5dp"
-            android:text="@string/start_game_button"
-            android:textSize="12sp"
-            android:visibility="gone" />
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/start_game_button"
+                style="@style/SignInButton"
+                android:layout_gravity="center"
+                android:text="@string/start_game_button"
+                android:textSize="18sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/is_waiting_to_start"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:textSize="30sp"
+                android:text="Waiting to start..."
+                android:textColor="#000000"
+                android:visibility="gone"/>
+
+            <EditText
+                android:id="@+id/points_to_win"
+                android:layout_marginTop="30dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:textSize="20sp"
+                android:hint="100"
+                android:imeOptions="actionSend"
+                android:inputType="textShortMessage"
+                android:textAlignment="center"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+
 
         <com.martin.pictionary2.drawing.PaintView
             android:id="@+id/paintView"

@@ -8,6 +8,7 @@ import android.os.CountDownTimer;
 import android.os.Parcel;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -60,6 +61,7 @@ import com.martin.pictionary2.drawing.PaintView;
 import com.martin.pictionary2.drawing.ParcelableUtil;
 import com.martin.pictionary2.messages.ClearMessage;
 import com.martin.pictionary2.messages.DrawingMessage;
+import com.martin.pictionary2.messages.EndGameMessage;
 import com.martin.pictionary2.messages.GuessMessage;
 import com.martin.pictionary2.messages.Message;
 import com.martin.pictionary2.messages.MessageAdapter;
@@ -114,8 +116,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     // Match turn number
     private int mMatchTurnNumber = 0;
 
-    // Current match score
-    private int mMyScore = 0;
+    // Winning Score - default value
+    private int maxPoints = 100;
+
+    private String winnerName="";
 
     // View that shows the counter
     private TextView mCounterView;
@@ -134,7 +138,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (isMyTurn()) {
                 mMatchTurnNumber += 1;
                 // Send turn message to others
-                TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, null, mTurnWord, false);
+                TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, null, mTurnWord, false, maxPoints, mDisplayNamesToScores);
                 sendMessage(turnMessage);
                 updateTurnIndices();
                 beginMyTurn();
@@ -285,7 +289,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //                mPlaying = true;
 //                startGame();
                 hideMenuButtons();
-                showStartButton();
+                updateTurnIndices();
+//                // Show start button and points to win for drawer only
+                if(isMyTurn()){
+                    Log.d(TAG, "It is my turn. Show start & points");
+                    showStartButton();
+                    showSetPointsToWin();
+                } else {
+                    Log.d(TAG, "It is not my turn. Show is waiting to start");
+                    showIsWaitingToStart();
+                }
             }
         }
 
@@ -428,8 +441,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                boolean handled = false;
                 if (actionId == EditorInfo.IME_ACTION_SEND) {
+
                     // set guess text in list view
                     TextView guessContent = new TextView(thisActivity);
                     guessContent.setText( mRoom.getParticipant(mMyParticipantId).getDisplayName() + ": " + v.getText().toString());
@@ -448,12 +461,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             scrollLayout.fullScroll(View.FOCUS_DOWN);
                         }
                     });
-
-                    handled = true;
                 }
-                return handled;
+                return true;
             }
         });
+
+        // Listener for setting points
+        final EditText pointsText = (EditText) findViewById(R.id.points_to_win);
+
+        pointsText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if (actionId == EditorInfo.IME_ACTION_SEND) {
+                    maxPoints = Integer.parseInt(v.getText().toString());
+                    pointsText.setEnabled(false);
+                    pointsText.setEnabled(true);
+                    Log.i(TAG, "Score set to: " + maxPoints);
+                }
+                return true;
+            }
+        });
+
+
 
         // TODO some kind of listener??
         // drawing code...
@@ -468,100 +497,67 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mCounterView = (TextView) findViewById(R.id.countDown);
     }
 
-    public void showScoreBoard() {
-        Log.i(TAG, "DisplayNames & Scores: ");
-        LinearLayout scoreBoard = (LinearLayout) findViewById(R.id.scoreBoard);
-        scoreBoard.setVisibility(View.VISIBLE);
-
-        for (Map.Entry<String, Integer> entry : mDisplayNamesToScores.entrySet()) {
-            Log.i(TAG,"Key = " + entry.getKey() + ", Value = " + entry.getValue());
-
-//            TextView scores = new TextView(thisActivity);
-//            scores.setText( entry.getKey() + ": " + entry.getValue().toString());
-//            scoreBoard.addView(scores);
-        }
+    public void hideGameView() {
+        findViewById(R.id.paintView).setVisibility(View.GONE);
+        findViewById(R.id.messages).setVisibility(View.GONE);
+        findViewById(R.id.points_to_win).setVisibility(View.GONE);
+        findViewById(R.id.is_waiting_to_start).setVisibility(View.GONE);
     }
 
     public void showScoreBoardDummy() {
-
-        for (Map.Entry<String, Integer> entry : mDisplayNamesToScores.entrySet()) {
-            Log.i(TAG,"Key = " + entry.getKey() + ", Value = " + entry.getValue());
-        }
+        hideGameView();
 
         LinearLayout scoreBoardContainer = (LinearLayout) findViewById(R.id.scoreBoardContainer);
         scoreBoardContainer.setVisibility(View.VISIBLE);
 
         LinearLayout scoreBoard = (LinearLayout) findViewById(R.id.scoreBoard);
 
+        TextView winner = new TextView(thisActivity);
+        winner.setTextSize(TypedValue.COMPLEX_UNIT_SP, 35);
+        winner.setGravity(Gravity.CENTER_HORIZONTAL);
+        winner.setText(winnerName + " \n is the winner!");
+        winner.setTextColor(Color.rgb(255, 61, 120));
+        winner.setTypeface(Typeface.DEFAULT_BOLD);
 
-        LinearLayout nameScoreContainer = new LinearLayout(thisActivity);
-        nameScoreContainer.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        LinearLayout.LayoutParams textParam = new LinearLayout.LayoutParams
-                (LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
-        nameScoreContainer.setLayoutParams(params);
+        scoreBoard.addView(winner);
 
+        for (Map.Entry<String, Integer> entry : mDisplayNamesToScores.entrySet()) {
 
-        TextView score = new TextView(thisActivity);
-        TextView name = new TextView(thisActivity);
+            Log.i(TAG, "Key = " + entry.getKey() + ", Value = " + entry.getValue());
 
-        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
-        name.setLayoutParams(textParam);
-        name.setText("Desiree");
-        name.setTextColor(Color.rgb(255, 61, 120));
-        name.setTypeface(Typeface.DEFAULT_BOLD);
+            LinearLayout nameScoreContainer = new LinearLayout(thisActivity);
+            nameScoreContainer.setOrientation(LinearLayout.HORIZONTAL);
+            nameScoreContainer.setBackgroundResource(R.drawable.score_border);
 
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            params.setMargins(30,60,30,0);
+            nameScoreContainer.setLayoutParams(params);
 
-
-
-        score.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
-        score.setLayoutParams(textParam);
-        score.setText("0");
-        score.setTextColor(Color.rgb(255, 67, 95));
-
-        scoreBoard.addView(nameScoreContainer);
-        nameScoreContainer.addView(name);
-        nameScoreContainer.addView(score);
-
-
-        // NEW PERSON
-//        LinearLayout nameScoreContainer2 = new LinearLayout(thisActivity);
-//        nameScoreContainer2.setLayoutParams(new WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT,
-//                WindowManager.LayoutParams.MATCH_PARENT));
-//        nameScoreContainer2.setOrientation(LinearLayout.HORIZONTAL);
-//        TextView score2 = new TextView(thisActivity);
-//        TextView name2 = new TextView(thisActivity);
-//
-//        name2.setText( "John");
-//        name2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
-//        name2.setLayoutParams(new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT,
-//                WindowManager.LayoutParams.WRAP_CONTENT, 1));
-//        name2.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
-//        name2.setTextColor(Color.rgb(255, 67, 95));
-//
-//
-//        score2.setText( "0");
-//        score2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
-//        score2.setLayoutParams(new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT,
-//                WindowManager.LayoutParams.WRAP_CONTENT, 1));
-//        score2.setTextColor(Color.rgb(255, 67, 95));
-
-//        Integer width1 = name.getWidth();
-//        Integer width2 = name2.getWidth();
-//        Integer width = Math.max(width1, width2);
-
-        // ADD TO LAYOUT
-//        name.setWidth(width);
-//        name2.setWidth(width);
+            LinearLayout.LayoutParams textParam = new LinearLayout.LayoutParams
+                    (LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
 
 
 
-//        nameScoreContainer2.addView(name2);
-//        nameScoreContainer2.addView(score2);
+            TextView score = new TextView(thisActivity);
+            TextView name = new TextView(thisActivity);
 
-//        scoreBoard.addView(nameScoreContainer2);
+            name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+            name.setLayoutParams(textParam);
+            name.setTextColor(Color.rgb(52,52,52));
+            name.setText(entry.getKey());
+            name.setWidth(500);
 
+            score.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+            score.setLayoutParams(textParam);
+            score.setTextColor(Color.rgb(52,52,52));
+            score.setText(entry.getValue().toString());
+
+
+            scoreBoard.addView(nameScoreContainer);
+            nameScoreContainer.addView(name);
+            nameScoreContainer.addView(score);
+        }
 
     }
 
@@ -605,6 +601,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } else if (view.getId() == R.id.invitations_button) {
             showInvitationInbox();
         } else if (view.getId() == R.id.start_game_button) {
+            // if points field has not been set, use default point value
+            getDisplayNames();
             startMatch();
         }
     }
@@ -891,18 +889,35 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         if (message instanceof GuessMessage) {
             GuessMessage guessMessage = (GuessMessage) message;
-            addToMessageFeed(guessMessage.getGuess());
+
+            addToMessageFeed(guessMessage.getDisplayName() + ": " + guessMessage.getGuess());
 
             // TODO: Add logic for ending game?
             if (isMyTurn()) {
                 if (guessMessage.getGuess().toLowerCase().equals(mTurnWord)) {
                     Log.d(TAG, "Received a correct guess: " + guessMessage.getGuess() + " from: " + guessMessage.getGuesserId());
                     mMatchTurnNumber += 1;
-                    // Send turn message to others
-                    TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, guessMessage.getGuesserId(), mTurnWord, false);
-                    sendMessage(turnMessage);
-                    updateTurnIndices();
-                    beginMyTurn();
+
+                    String displayName = mRoom.getParticipant(guessMessage.getGuesserId()).getDisplayName();
+                    int guesserScore =  mDisplayNamesToScores.get(displayName) + 100;
+                    mDisplayNamesToScores.put(displayName, guesserScore);
+
+                    if(gotWinner()){
+                        Log.d(TAG, "Got a winner. mDisplayNamesToScore = " + mDisplayNamesToScores);
+                        winnerName = displayName;
+                        EndGameMessage endGameMessage = new EndGameMessage(mDisplayNamesToScores, displayName);
+                        sendMessage(endGameMessage);
+                        showScoreBoardDummy();
+                        // end game sys.stop. no more programming
+                    } else {
+                        Log.d(TAG, "Sending Turn message");
+                        // Send turn message to others
+                        TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, guessMessage.getGuesserId(), mTurnWord, false,  maxPoints, mDisplayNamesToScores);
+                        sendMessage(turnMessage);
+
+                        updateTurnIndices();
+                        beginMyTurn();
+                    }
                 }
             }
         } else if (message instanceof DrawingMessage) {
@@ -916,9 +931,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } else if (message instanceof UndoMessage) {
             paintView.undo();
         } else if (message instanceof TurnMessage) {
+            Log.d(TAG, "Received Turn message with mDisplayNamesToScores = " + mDisplayNamesToScores);
             // TurnMessage - set all turn-specific data
             TurnMessage msg = (TurnMessage) message;
             mMatchTurnNumber = msg.getTurnNumber();
+            maxPoints = msg.getMaxScore();
+            mDisplayNamesToScores = msg.getScores();
 
             if (msg.getPrevWord() != null) {
                 // Show the guesser what the correct word was
@@ -928,23 +946,42 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             // If this is a new game, set score to 0. Otherwise, if this guesser guessed correctly,
             // increment guesser's score
             if (msg.getNewGame()) {
-                mMyScore = 0;
+//                mMyScore = 0;
+                mDisplayNamesToScores.put(mRoom.getParticipant(mMyParticipantId).getDisplayName(), 0);
                 mMatchTurnNumber = 0;
                 updateTurnIndices();
             } else if (mMyParticipantId.equals(msg.getGuesserId())) {
-                mMyScore += 100;
-
-                // Indicate to guesser that guesser is correct
-                addToMessageFeed("You're correct! Your score is: " + mMyScore);
-
+                addToMessageFeed("You're correct! Your score is: " + mDisplayNamesToScores.get(mRoom.getParticipant(mMyParticipantId).getDisplayName()));
             }
 
             if (isMyTurn()) {
                 mTurnWord = getRandomWord();
             }
+
             updateTurnIndices();
             beginMyTurn();
+
+        } else if(message instanceof EndGameMessage){
+            EndGameMessage msg = (EndGameMessage) message;
+            winnerName = msg.getWinner();
+            mDisplayNamesToScores = msg.getScores();
+            showScoreBoardDummy();
         }
+
+    }
+
+    /** Winning amount of points reached **/
+
+    private boolean gotWinner() {
+        Log.d(TAG, "mMyParticipandId: " + mMyParticipantId + " mDisplayNamesToScores: " + mDisplayNamesToScores);
+        Log.d(TAG, "mMyScore: " + mDisplayNamesToScores.get(mRoom.getParticipant(mMyParticipantId).getDisplayName()) + " maxPoints: " + maxPoints);
+        for (Map.Entry<String, Integer> entry : mDisplayNamesToScores.entrySet()) {
+            if(entry.getValue() >= maxPoints){
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -999,6 +1036,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.start_game_button).setVisibility(View.VISIBLE);
     }
 
+    private void showIsWaitingToStart(){
+        findViewById(R.id.is_waiting_to_start).setVisibility(View.VISIBLE);
+    }
+
+    private void showSetPointsToWin() {
+        findViewById(R.id.points_to_win).setVisibility(View.VISIBLE);
+    }
     /**
      * Show the UI for the player who is currently acting as the artist.
      */
@@ -1086,9 +1130,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void startMatch() {
         if (shouldStartGame(mRoom)) {
-            updateTurnIndices();
-            getDisplayNames();
-            showScoreBoardDummy();
+//            updateTurnIndices();
             mPlaying = true;
 
 
@@ -1100,10 +1142,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             mMatchTurnNumber = 0;
             // Send turn message to others
-            TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, null, null, true);
+            Log.d(TAG, "Sending Turn message in startMatch");
+            TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, null, null, true,  maxPoints, mDisplayNamesToScores);
             sendMessage(turnMessage);
 
-            mMyScore = 0;
             beginMyTurn();
         }
     }
