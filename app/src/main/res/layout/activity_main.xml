@@ -60,7 +60,7 @@
                 android:textStyle="bold" />
 
             <Button
-                android:id="@+id/play_again_button"
+                android:id="@+id/leave_game_button"
                 style="@style/SignInButton"
                 android:layout_gravity="center_horizontal"
                 android:text="Leave Game"

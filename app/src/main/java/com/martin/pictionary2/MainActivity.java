@@ -264,10 +264,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         public void onDisconnectedFromRoom(@Nullable Room room) {
             // This usually happens due to a network error, leave the game.
             Log.i(TAG, "Disconnected from room " + room.getRoomId());
-            Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
-                    .leave(mJoinedRoomConfig, room.getRoomId());
             Log.i(TAG, "Left room in onDisconnectedFromRoom");
-            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            goToHomeScreen();
+
             // show error message and return to main screen
             mRoom = null;
             mJoinedRoomConfig = null;
@@ -294,10 +293,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 // the game to go on, end the game and leave the room.
             } else if (shouldCancelGame(room)) {
                 // cancel the game
-                Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
-                        .leave(mJoinedRoomConfig, room.getRoomId());
+                goToHomeScreen();
                 Log.i(TAG, "Left room in onPeersDisconnected");
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
             }
         }
 
@@ -393,6 +391,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.invite_players_button).setOnClickListener(this);
         findViewById(R.id.invitations_button).setOnClickListener(this);
         findViewById(R.id.start_game_button).setOnClickListener(this);
+        findViewById(R.id.leave_game_button).setOnClickListener(this);
         mGoogleSignInOptions = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN)
                 .requestProfile()
                 .build();
@@ -591,6 +590,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             pointsText.setVisibility(View.GONE);
             getDisplayNames();
             startMatch();
+        } else if (view.getId() == R.id.leave_game_button){
+            // restart the game - brmi
+            Log.i(TAG, "Leave Game button clicked");
+            if(mRoom != null){
+                goToHomeScreen();
+            }
         }
     }
 
@@ -1045,6 +1050,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void showSetPointsToWin() {
         findViewById(R.id.points_to_win).setVisibility(View.VISIBLE);
+    }
+
+    private void hideScoreBoard() {
+        findViewById(R.id.scoreBoardContainer).setVisibility(View.GONE);
+    }
+
+    private void showMenuButtons() {
+        findViewById(R.id.menuButtons).setVisibility(View.VISIBLE);
+    }
+
+    private void goToHomeScreen() {
+        Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
+                .leave(mJoinedRoomConfig, mRoom.getRoomId());
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        hideScoreBoard();
+        showMenuButtons();
     }
     /**
      * Show the UI for the player who is currently acting as the artist.
