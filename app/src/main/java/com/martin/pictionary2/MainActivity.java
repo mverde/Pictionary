@@ -116,7 +116,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private int mMatchTurnNumber = 0;
 
     // Winning Score - default value
-    private int maxPoints = 100;
+    private int maxPoints = 500;
 
     private String winnerName="";
 
@@ -469,6 +469,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         // Listener for setting points
         final EditText pointsText = (EditText) findViewById(R.id.points_to_win);
+        pointsText.setHint("" + maxPoints);
 
         pointsText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
