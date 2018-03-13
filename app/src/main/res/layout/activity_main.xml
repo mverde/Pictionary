@@ -31,16 +31,21 @@
                 android:textSize="40sp"
                 android:textStyle="bold" />
 
-            <LinearLayout
-                android:id="@+id/scoreBoard"
+            <ScrollView
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:paddingLeft="20dp"
-                android:paddingRight="20dp"
-                android:paddingTop="10dp">
+                android:layout_height="400dp">
+                <LinearLayout
+                    android:id="@+id/scoreBoard"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:paddingLeft="20dp"
+                    android:paddingRight="20dp"
+                    android:paddingTop="10dp">
 
-            </LinearLayout>
+                </LinearLayout>
+            </ScrollView>
+
 
             <TextView
                 android:layout_width="match_parent"
@@ -55,7 +60,7 @@
                 android:textStyle="bold" />
 
             <Button
-                android:id="@+id/play_again_button"
+                android:id="@+id/leave_game_button"
                 style="@style/SignInButton"
                 android:layout_gravity="center_horizontal"
                 android:text="Leave Game"

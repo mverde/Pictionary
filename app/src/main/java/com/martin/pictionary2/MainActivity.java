@@ -264,10 +264,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         public void onDisconnectedFromRoom(@Nullable Room room) {
             // This usually happens due to a network error, leave the game.
             Log.i(TAG, "Disconnected from room " + room.getRoomId());
-            Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
-                    .leave(mJoinedRoomConfig, room.getRoomId());
             Log.i(TAG, "Left room in onDisconnectedFromRoom");
-            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            goToHomeScreen();
+
             // show error message and return to main screen
             mRoom = null;
             mJoinedRoomConfig = null;
@@ -281,21 +280,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Log.i(TAG, "Peers connected to room " + room.getRoomId());
             if (mPlaying) {
                 // add new player to an ongoing game
-            } else if (shouldStartGame(room)) {
-                // set initial game state
-//                mPlaying = true;
-//                startGame();
-                hideMenuButtons();
-                updateTurnIndices();
-//                // Show start button and points to win for drawer only
-                if(isMyTurn()){
-                    Log.d(TAG, "It is my turn. Show start & points");
-                    showStartButton();
-                    showSetPointsToWin();
-                } else {
-                    Log.d(TAG, "It is not my turn. Show is waiting to start");
-                    showIsWaitingToStart();
-                }
             }
         }
 
@@ -309,10 +293,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 // the game to go on, end the game and leave the room.
             } else if (shouldCancelGame(room)) {
                 // cancel the game
-                Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
-                        .leave(mJoinedRoomConfig, room.getRoomId());
+                goToHomeScreen();
                 Log.i(TAG, "Left room in onPeersDisconnected");
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
             }
         }
 
@@ -408,6 +391,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.invite_players_button).setOnClickListener(this);
         findViewById(R.id.invitations_button).setOnClickListener(this);
         findViewById(R.id.start_game_button).setOnClickListener(this);
+        findViewById(R.id.leave_game_button).setOnClickListener(this);
         mGoogleSignInOptions = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN)
                 .requestProfile()
                 .build();
@@ -481,6 +465,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
 
+
         // TODO some kind of listener??
         // drawing code...
         paintView = findViewById(R.id.paintView);
@@ -501,7 +486,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.is_waiting_to_start).setVisibility(View.GONE);
     }
 
-    public void showScoreBoardDummy() {
+    public void showScoreBoard() {
         hideGameView();
 
         LinearLayout scoreBoardContainer = (LinearLayout) findViewById(R.id.scoreBoardContainer);
@@ -543,7 +528,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             name.setLayoutParams(textParam);
             name.setTextColor(Color.rgb(52,52,52));
             name.setText(entry.getKey());
-            name.setWidth(500);
+            name.setWidth(550);
 
             score.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
             score.setLayoutParams(textParam);
@@ -599,8 +584,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             showInvitationInbox();
         } else if (view.getId() == R.id.start_game_button) {
             // if points field has not been set, use default point value
+            EditText pointsText = (EditText) findViewById(R.id.points_to_win);
+            pointsText.setEnabled(false);
+            pointsText.setEnabled(true);
+            pointsText.setVisibility(View.GONE);
             getDisplayNames();
             startMatch();
+        } else if (view.getId() == R.id.leave_game_button){
+            // restart the game - brmi
+            Log.i(TAG, "Leave Game button clicked");
+            if(mRoom != null){
+                goToHomeScreen();
+            }
         }
     }
 
@@ -666,6 +661,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             if (resultCode == Activity.RESULT_OK) {
                 // Start the game!
+                if (shouldStartGame(mRoom)) {
+                    // set initial game state
+//                mPlaying = true;
+//                startGame();
+                    hideMenuButtons();
+                    updateTurnIndices();
+//                // Show start button and points to win for drawer only
+                    if(isMyTurn()){
+                        Log.d(TAG, "It is my turn. Show start & points");
+                        showStartButton();
+                        showSetPointsToWin();
+                    } else {
+                        Log.d(TAG, "It is not my turn. Show is waiting to start");
+                        showIsWaitingToStart();
+                    }
+                }
             } else if (resultCode == Activity.RESULT_CANCELED) {
                 // Waiting room was dismissed with the back button. The meaning of this
                 // action is up to the game. You may choose to leave the room and cancel the
@@ -904,7 +915,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         winnerName = displayName;
                         EndGameMessage endGameMessage = new EndGameMessage(mDisplayNamesToScores, displayName);
                         sendMessage(endGameMessage);
-                        showScoreBoardDummy();
+                        showScoreBoard();
                         // end game sys.stop. no more programming
                     } else {
                         Log.d(TAG, "Sending Turn message");
@@ -962,7 +973,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             EndGameMessage msg = (EndGameMessage) message;
             winnerName = msg.getWinner();
             mDisplayNamesToScores = msg.getScores();
-            showScoreBoardDummy();
+            showScoreBoard();
         }
 
     }
@@ -1039,6 +1050,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void showSetPointsToWin() {
         findViewById(R.id.points_to_win).setVisibility(View.VISIBLE);
+    }
+
+    private void hideScoreBoard() {
+        findViewById(R.id.scoreBoardContainer).setVisibility(View.GONE);
+    }
+
+    private void showMenuButtons() {
+        findViewById(R.id.menuButtons).setVisibility(View.VISIBLE);
+    }
+
+    private void goToHomeScreen() {
+        Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
+                .leave(mJoinedRoomConfig, mRoom.getRoomId());
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        hideScoreBoard();
+        showMenuButtons();
     }
     /**
      * Show the UI for the player who is currently acting as the artist.
