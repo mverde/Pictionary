@@ -4,9 +4,6 @@ package com.martin.pictionary2.messages;
  * Created by desireelenart on 3/5/18.
  */
 
-import android.os.Parcel;
-import android.view.MotionEvent;
-
 /**
  * Message that the artist has drawn a line and the receiver should mirror it in their own
  * PaintView.
