@@ -127,7 +127,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView mNewGameCounterView;
 
     // Countdown timer for each turn
-    private CountDownTimer mCountDownTimer = new CountDownTimer(60000, 1000) {
+    private CountDownTimer mCountDownTimer = new CountDownTimer(90000, 1000) {
         @Override
         public void onTick(long l) {
             if (mCounterView != null) {
@@ -502,6 +502,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.paintView).setVisibility(View.GONE);
         findViewById(R.id.messages).setVisibility(View.GONE);
         findViewById(R.id.points_to_win).setVisibility(View.GONE);
+        findViewById(R.id.start_game_button).setVisibility(View.GONE);
         findViewById(R.id.is_waiting_to_start).setVisibility(View.GONE);
     }
 
@@ -1113,6 +1114,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.guessWord).setVisibility(View.VISIBLE);
         findViewById(R.id.paintView).setVisibility(View.VISIBLE);
         findViewById(R.id.start_game_button).setVisibility(View.GONE);
+        findViewById(R.id.is_waiting_to_start).setVisibility(View.GONE);
         findViewById(R.id.countDown).setVisibility(View.VISIBLE);
 
         ((TextView) findViewById(R.id.guessWord)).setText("Your word is: " + mTurnWord);
@@ -1130,6 +1132,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.messages).setVisibility(View.VISIBLE);
         findViewById(R.id.guessWord).setVisibility(View.GONE);
         findViewById(R.id.start_game_button).setVisibility(View.GONE);
+        findViewById(R.id.is_waiting_to_start).setVisibility(View.GONE);
         findViewById(R.id.paintView).setVisibility(View.VISIBLE);
         findViewById(R.id.countDown).setVisibility(View.VISIBLE);
         // Show the guesser what the correct word was
