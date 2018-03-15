@@ -475,10 +475,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 if (actionId == EditorInfo.IME_ACTION_SEND) {
-                    maxPoints = Integer.parseInt(v.getText().toString());
-                    pointsText.setEnabled(false);
-                    pointsText.setEnabled(true);
-                    Log.i(TAG, "Score set to: " + maxPoints);
+                    try {
+                        maxPoints = Integer.parseInt(v.getText().toString());
+                        if (maxPoints < 100) {
+                            maxPoints = 100;
+                        }
+                        pointsText.setEnabled(false);
+                        pointsText.setEnabled(true);
+                        Log.i(TAG, "Score set to: " + maxPoints);
+                    } catch (NumberFormatException e) {
+                        return true;
+                    }
                 }
                 return true;
             }
