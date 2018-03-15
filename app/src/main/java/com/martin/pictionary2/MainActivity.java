@@ -116,7 +116,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private int mMatchTurnNumber = 0;
 
     // Winning Score - default value
-    private int maxPoints = 100;
+    private int maxPoints = 500;
 
     private String winnerName="";
 
