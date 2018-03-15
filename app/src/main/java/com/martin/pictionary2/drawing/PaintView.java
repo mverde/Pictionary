@@ -93,9 +93,7 @@ public class PaintView extends View {
         paths.clear();
         invalidate();
     }
-
-    // TODO: message that says 'clear', 'undo', or 'new path'.
-
+    
     public void color() {
         ColorPickerDialogBuilder
                 .with(context)
@@ -117,8 +115,6 @@ public class PaintView extends View {
                 .build()
                 .show();
     }
-
-    // TODO: Undo button... simply pop the last item in paths...
 
     @Override
     protected void onDraw(Canvas canvas) {
