@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Pictionary</string>
+    <string name="app_name">P2Ptionary</string>
     <string name="signin_other_error">Unknown error status</string>
     <string name="sign_out_button">Sign out</string>
     <string name="invite_players_button">Invite Players</string>

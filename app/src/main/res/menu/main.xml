@@ -6,16 +6,19 @@
         android:id="@+id/color"
         app:showAsAction="always"
         android:icon="@drawable/ic_color_lens_black_24dp"
-        android:title="Color"/>
+        android:title="Color"
+        android:visible="false"/>
 
     <item
         android:id="@+id/undo"
         app:showAsAction="always"
-        android:title="Undo" />
+        android:title="Undo"
+        android:visible="false"/>
 
     <item
         android:id="@+id/clear"
         app:showAsAction="always"
-        android:title="Clear" />
+        android:title="Clear"
+        android:visible="false"/>
 
 </menu>

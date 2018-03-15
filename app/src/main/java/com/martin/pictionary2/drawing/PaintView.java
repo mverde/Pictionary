@@ -7,11 +7,8 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.os.Parcel;
-import android.os.Parcelable;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -19,13 +16,9 @@ import com.flask.colorpicker.ColorPickerView;
 import com.flask.colorpicker.builder.ColorPickerClickListener;
 import com.flask.colorpicker.builder.ColorPickerDialogBuilder;
 import com.martin.pictionary2.MainActivity;
-import com.martin.pictionary2.messages.ClearMessage;
 import com.martin.pictionary2.messages.DrawingMessage;
-import com.martin.pictionary2.messages.UndoMessage;
 
 import java.util.ArrayList;
-
-import static com.martin.pictionary2.MainActivity.TAG;
 
 
 public class PaintView extends View {

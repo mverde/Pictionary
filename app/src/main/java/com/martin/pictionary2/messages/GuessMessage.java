@@ -14,13 +14,15 @@ package com.martin.pictionary2.messages;
 public class GuessMessage extends Message {
     private String guess;
     private String guesserId;
+    private String displayName;
 
     public GuessMessage() {
     }
 
-    public GuessMessage(String guess, String guesserId) {
+    public GuessMessage(String displayName, String guess, String guesserId) {
         this.guess = guess;
         this.guesserId = guesserId;
+        this.displayName = displayName;
     }
 
     public String getGuess() {
@@ -38,4 +40,8 @@ public class GuessMessage extends Message {
     public void setGuesserId(String guesserId) {
         this.guesserId = guesserId;
     }
+
+    public String getDisplayName() {return displayName;}
+
+    public void setDisplayName() { this.displayName = displayName; }
 }

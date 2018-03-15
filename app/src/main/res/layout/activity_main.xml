@@ -14,6 +14,72 @@
         android:id="@+id/relativeLayout">
 
         <LinearLayout
+            android:id="@+id/scoreBoardContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:gravity="center_horizontal"
+                android:text="Score Board"
+                android:textAlignment="center"
+                android:textColor="@android:color/black"
+                android:textSize="40sp"
+                android:textStyle="bold" />
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="400dp">
+                <LinearLayout
+                    android:id="@+id/scoreBoard"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:paddingLeft="20dp"
+                    android:paddingRight="20dp"
+                    android:paddingTop="10dp">
+
+                </LinearLayout>
+            </ScrollView>
+
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:gravity="center_horizontal"
+                android:text="Next Game starting in "
+                android:textAlignment="center"
+                android:textColor="@android:color/black"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/new_game_timer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:gravity="center_horizontal"
+                android:text=""
+                android:textAlignment="center"
+                android:textColor="@android:color/black"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/leave_game_button"
+                style="@style/SignInButton"
+                android:layout_gravity="center_horizontal"
+                android:text="Leave Game"
+                android:textSize="18sp" />
+
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/menuButtons"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -47,14 +113,47 @@
 
         </LinearLayout>
 
-        <Button
-            android:id="@+id/start_game_button"
-            style="@style/SignInButton"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:layout_centerInParent="true"
-            android:layout_marginTop="5dp"
-            android:text="@string/start_game_button"
-            android:textSize="12sp"
-            android:visibility="gone" />
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/start_game_button"
+                style="@style/SignInButton"
+                android:layout_gravity="center"
+                android:text="@string/start_game_button"
+                android:textSize="18sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/is_waiting_to_start"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:textSize="30sp"
+                android:text="Waiting to start..."
+                android:textColor="#000000"
+                android:visibility="gone"/>
+
+            <EditText
+                android:id="@+id/points_to_win"
+                android:layout_marginTop="30dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:textSize="20sp"
+                android:imeOptions="actionSend"
+                android:inputType="textShortMessage"
+                android:textAlignment="center"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+
 
         <com.martin.pictionary2.drawing.PaintView
             android:id="@+id/paintView"

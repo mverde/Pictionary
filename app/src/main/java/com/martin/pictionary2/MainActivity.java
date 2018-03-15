@@ -2,26 +2,30 @@ package com.martin.pictionary2;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Parcel;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -50,22 +54,25 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.martin.pictionary2.drawing.FingerPath;
 import com.martin.pictionary2.drawing.PaintView;
 import com.martin.pictionary2.drawing.ParcelableUtil;
 import com.martin.pictionary2.messages.ClearMessage;
 import com.martin.pictionary2.messages.DrawingMessage;
+import com.martin.pictionary2.messages.EndGameMessage;
 import com.martin.pictionary2.messages.GuessMessage;
 import com.martin.pictionary2.messages.Message;
 import com.martin.pictionary2.messages.MessageAdapter;
-import com.martin.pictionary2.messages.UndoMessage;
 import com.martin.pictionary2.messages.TurnMessage;
+import com.martin.pictionary2.messages.UndoMessage;
+
+import org.w3c.dom.Text;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -86,6 +93,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Room mRoom;
     private String mMyParticipantId;
 
+    // Dictionary with DisplayName and Score for each player
+    private Map<String, Integer> mDisplayNamesToScores = new HashMap<String, Integer>();
+
     // It is the player's turn when (match turn number % num participants == my turn index)
     private int mMyTurnIndex;
 
@@ -97,7 +107,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private GoogleSignInAccount mGoogleSignInAccount = null;
     private GoogleSignInOptions mGoogleSignInOptions = null;
 
-    // All possible words for 8BitArtist
     private String[] mAllWords;
 
     // Word for this turn, if the player is the drawer
@@ -106,14 +115,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     // Match turn number
     private int mMatchTurnNumber = 0;
 
-    // Current match score
-    private int mMyScore = 0;
+    // Winning Score - default value
+    private int maxPoints = 500;
+
+    private String winnerName="";
 
     // View that shows the counter
     private TextView mCounterView;
 
+    // View that shows the new game counter
+    private TextView mNewGameCounterView;
+
     // Countdown timer for each turn
-    private CountDownTimer mCountDownTimer = new CountDownTimer(600000, 1000) {
+    private CountDownTimer mCountDownTimer = new CountDownTimer(90000, 1000) {
         @Override
         public void onTick(long l) {
             if (mCounterView != null) {
@@ -126,12 +140,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (isMyTurn()) {
                 mMatchTurnNumber += 1;
                 // Send turn message to others
-                TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, null, mTurnWord, false);
+                TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, null, mTurnWord, false, maxPoints, mDisplayNamesToScores);
                 sendMessage(turnMessage);
                 updateTurnIndices();
                 beginMyTurn();
             }
             addToMessageFeed("Time's up! Next turn!");
+        }
+    };
+
+    // Countdown timer for each turn
+    private CountDownTimer mNewGameCountDownTimer = new CountDownTimer(10000, 1000) {
+        @Override
+        public void onTick(long l) {
+            if (mNewGameCounterView != null) {
+                mNewGameCounterView.setText(Long.toString(l / 1000));
+            }
+        }
+
+        @Override
+        public void onFinish() {
+            if (mRoom != null ) {
+                setInitialGameState();
+            }
         }
     };
 
@@ -167,6 +198,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         public void onLeftRoom(int code, @NonNull String roomId) {
             Log.d(TAG, "Left room" + roomId);
+            mRoom = null;
+            mNewGameCountDownTimer.cancel();
         }
 
         @Override
@@ -210,10 +243,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             mRoom = room;
             Log.i(TAG, "Peer declined connecting to room " + room.getRoomId());
             if (!mPlaying && shouldCancelGame(room)) {
-                Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
-                        .leave(mJoinedRoomConfig, room.getRoomId());
                 Log.i(TAG, "Left room in onPeerDeclined");
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                goToHomeScreen();
             }
         }
 
@@ -221,6 +252,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         public void onPeerJoined(@Nullable Room room, @NonNull List<String> list) {
             // Update UI status indicating new players have joined!
             mRoom = room;
+            updateTurnIndices();
             Log.i(TAG, "Peer joined room " + room.getRoomId());
         }
 
@@ -229,11 +261,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             // Peer left, see if game should be canceled.
             mRoom = room;
             Log.i(TAG, "Peer left room " + room.getRoomId());
+            updateTurnIndices();
             if (!mPlaying && shouldCancelGame(room)) {
-                Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
-                        .leave(mJoinedRoomConfig, room.getRoomId());
                 Log.i(TAG, "Left room in onPeerLeft");
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                goToHomeScreen();
             }
         }
 
@@ -255,13 +286,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         public void onDisconnectedFromRoom(@Nullable Room room) {
             // This usually happens due to a network error, leave the game.
             Log.i(TAG, "Disconnected from room " + room.getRoomId());
-            Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
-                    .leave(mJoinedRoomConfig, room.getRoomId());
             Log.i(TAG, "Left room in onDisconnectedFromRoom");
-            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            // show error message and return to main screen
-            mRoom = null;
-            mJoinedRoomConfig = null;
+            goToHomeScreen();
         }
 
         @Override
@@ -270,31 +296,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Log.d(TAG, "onPeersConnected:" + room + ":" + list);
             mRoom = room;
             Log.i(TAG, "Peers connected to room " + room.getRoomId());
-            if (mPlaying) {
-                // add new player to an ongoing game
-            } else if (shouldStartGame(room)) {
-                // set initial game state
-//                mPlaying = true;
-//                startGame();
-                hideMenuButtons();
-                showStartButton();
-            }
         }
 
         @Override
         public void onPeersDisconnected(@Nullable Room room, @NonNull List<String> list) {
             mRoom = room;
             Log.i(TAG, "Peers disconnected from room " + room.getRoomId());
+            updateTurnIndices();
             if (mPlaying) {
                 // do game-specific handling of this -- remove player's avatar
                 // from the screen, etc. If not enough players are left for
                 // the game to go on, end the game and leave the room.
             } else if (shouldCancelGame(room)) {
                 // cancel the game
-                Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
-                        .leave(mJoinedRoomConfig, room.getRoomId());
+                goToHomeScreen();
                 Log.i(TAG, "Left room in onPeersDisconnected");
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
             }
         }
 
@@ -358,6 +375,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.main, menu);
+        if (isMyTurn()) {
+            menu.findItem(R.id.color).setVisible(true);
+            menu.findItem(R.id.undo).setVisible(true);
+            menu.findItem(R.id.clear).setVisible(true);
+        } else {
+            menu.findItem(R.id.color).setVisible(false);
+            menu.findItem(R.id.undo).setVisible(false);
+            menu.findItem(R.id.clear).setVisible(false);
+        }
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -390,6 +416,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.invite_players_button).setOnClickListener(this);
         findViewById(R.id.invitations_button).setOnClickListener(this);
         findViewById(R.id.start_game_button).setOnClickListener(this);
+        findViewById(R.id.leave_game_button).setOnClickListener(this);
         mGoogleSignInOptions = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN)
                 .requestProfile()
                 .build();
@@ -400,31 +427,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
             findViewById(R.id.invite_players_button).setVisibility(View.VISIBLE);
             findViewById(R.id.invitations_button).setVisibility(View.VISIBLE);
-//            findViewById(R.id.guessText).setVisibility(View.VISIBLE);
-            findViewById(R.id.guessesFeed).setVisibility(View.VISIBLE);
         } else {
             findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
             findViewById(R.id.sign_out_button).setVisibility(View.GONE);
             findViewById(R.id.invite_players_button).setVisibility(View.GONE);
             findViewById(R.id.invitations_button).setVisibility(View.GONE);
-            findViewById(R.id.guessText).setVisibility(View.GONE);
-            findViewById(R.id.guessesFeed).setVisibility(View.GONE);
         }
         //getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         final EditText editText = (EditText) findViewById(R.id.guessText);
         final LinearLayout guessesFeed = (LinearLayout) findViewById(R.id.guessesFeed);
         final ScrollView scrollLayout = (ScrollView) findViewById(R.id.messagesScrollView);
 
+
         editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                boolean handled = false;
                 if (actionId == EditorInfo.IME_ACTION_SEND) {
+
                     // set guess text in list view
                     TextView guessContent = new TextView(thisActivity);
-                    guessContent.setText(v.getText().toString());
+                    guessContent.setText(mRoom.getParticipant(mMyParticipantId).getDisplayName() + ": " + v.getText().toString());
                     guessesFeed.addView(guessContent);
-                    GuessMessage guess = new GuessMessage(v.getText().toString(), mMyParticipantId);
+                    GuessMessage guess = new GuessMessage(mRoom.getParticipant(mMyParticipantId).getDisplayName() ,v.getText().toString(), mMyParticipantId);
                     sendMessage(guess);
                     editText.setText("");
                     editText.setEnabled(false);
@@ -438,10 +462,32 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             scrollLayout.fullScroll(View.FOCUS_DOWN);
                         }
                     });
-
-                    handled = true;
                 }
-                return handled;
+                return true;
+            }
+        });
+
+        // Listener for setting points
+        final EditText pointsText = (EditText) findViewById(R.id.points_to_win);
+        pointsText.setHint("" + maxPoints);
+
+        pointsText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if (actionId == EditorInfo.IME_ACTION_SEND) {
+                    try {
+                        maxPoints = Integer.parseInt(v.getText().toString());
+                        if (maxPoints < 100) {
+                            maxPoints = 100;
+                        }
+                        pointsText.setEnabled(false);
+                        pointsText.setEnabled(true);
+                        Log.i(TAG, "Score set to: " + maxPoints);
+                    } catch (NumberFormatException e) {
+                        return true;
+                    }
+                }
+                return true;
             }
         });
 
@@ -456,6 +502,71 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mAllWords = getResources().getString(R.string.all_words).split(",");
 
         mCounterView = (TextView) findViewById(R.id.countDown);
+        mNewGameCounterView = (TextView) findViewById(R.id.new_game_timer);
+    }
+
+    public void hideGameView() {
+        findViewById(R.id.paintView).setVisibility(View.GONE);
+        findViewById(R.id.messages).setVisibility(View.GONE);
+        findViewById(R.id.points_to_win).setVisibility(View.GONE);
+        findViewById(R.id.start_game_button).setVisibility(View.GONE);
+        findViewById(R.id.is_waiting_to_start).setVisibility(View.GONE);
+    }
+
+    public void showScoreBoard() {
+        invalidateOptionsMenu();
+        hideGameView();
+
+        LinearLayout scoreBoardContainer = (LinearLayout) findViewById(R.id.scoreBoardContainer);
+        scoreBoardContainer.setVisibility(View.VISIBLE);
+
+        LinearLayout scoreBoard = (LinearLayout) findViewById(R.id.scoreBoard);
+
+        TextView winner = new TextView(thisActivity);
+        winner.setTextSize(TypedValue.COMPLEX_UNIT_SP, 35);
+        winner.setGravity(Gravity.CENTER_HORIZONTAL);
+        winner.setText(winnerName + " \n is the winner!");
+        winner.setTextColor(Color.rgb(255, 61, 120));
+        winner.setTypeface(Typeface.DEFAULT_BOLD);
+
+        scoreBoard.addView(winner);
+
+        for (Map.Entry<String, Integer> entry : mDisplayNamesToScores.entrySet()) {
+
+            Log.i(TAG, "Key = " + entry.getKey() + ", Value = " + entry.getValue());
+
+            LinearLayout nameScoreContainer = new LinearLayout(thisActivity);
+            nameScoreContainer.setOrientation(LinearLayout.HORIZONTAL);
+            nameScoreContainer.setBackgroundResource(R.drawable.score_border);
+
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            params.setMargins(30,60,30,0);
+            nameScoreContainer.setLayoutParams(params);
+
+            LinearLayout.LayoutParams textParam = new LinearLayout.LayoutParams
+                    (LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
+
+            TextView score = new TextView(thisActivity);
+            TextView name = new TextView(thisActivity);
+
+            name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+            name.setLayoutParams(textParam);
+            name.setTextColor(Color.rgb(52,52,52));
+            name.setText(entry.getKey());
+            name.setWidth(550);
+
+            score.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+            score.setLayoutParams(textParam);
+            score.setTextColor(Color.rgb(52,52,52));
+            score.setText(entry.getValue().toString());
+
+
+            scoreBoard.addView(nameScoreContainer);
+            nameScoreContainer.addView(name);
+            nameScoreContainer.addView(score);
+        }
+        mNewGameCountDownTimer.start();
     }
 
     public void sendDrawingMessage(DrawingMessage message) {
@@ -482,6 +593,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
         if (view.getId() == R.id.sign_in_button) {
             // start the asynchronous sign in flow
+            findViewById(R.id.sign_in_button).setEnabled(false);
             startSignInIntent();
         } else if (view.getId() == R.id.sign_out_button) {
             // sign out.
@@ -494,11 +606,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             findViewById(R.id.guessText).setVisibility(View.GONE);
             findViewById(R.id.guessesFeed).setVisibility(View.GONE);
         } else if (view.getId() == R.id.invite_players_button) {
+            findViewById(R.id.invite_players_button).setEnabled(false);
             invitePlayers();
         } else if (view.getId() == R.id.invitations_button) {
+            findViewById(R.id.invitations_button).setEnabled(false);
             showInvitationInbox();
         } else if (view.getId() == R.id.start_game_button) {
+            // if points field has not been set, use default point value
+            EditText pointsText = (EditText) findViewById(R.id.points_to_win);
+            pointsText.setEnabled(false);
+            pointsText.setEnabled(true);
+            pointsText.setVisibility(View.GONE);
+            getDisplayNames();
             startMatch();
+        } else if (view.getId() == R.id.leave_game_button){
+            // restart the game - brmi
+            Log.i(TAG, "Leave Game button clicked");
+            goToHomeScreen();
         }
     }
 
@@ -506,6 +630,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == RC_SIGN_IN) {
+            findViewById(R.id.sign_in_button).setEnabled(true);
             GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
             if (result.isSuccess()) {
                 // The signed in account is stored in the result.
@@ -515,8 +640,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
                 findViewById(R.id.invite_players_button).setVisibility(View.VISIBLE);
                 findViewById(R.id.invitations_button).setVisibility(View.VISIBLE);
-                findViewById(R.id.guessText).setVisibility(View.VISIBLE);
-                findViewById(R.id.guessesFeed).setVisibility(View.VISIBLE);
             } else {
                 String message = result.getStatus().getStatusMessage();
                 if (message == null || message.isEmpty()) {
@@ -527,6 +650,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         .setNeutralButton(android.R.string.ok, null).show();
             }
         } else if (requestCode == RC_SELECT_PLAYERS) {
+            findViewById(R.id.invite_players_button).setEnabled(true);
             if (resultCode != Activity.RESULT_OK) {
                 // Canceled or some other error.
                 return;
@@ -564,6 +688,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             if (resultCode == Activity.RESULT_OK) {
                 // Start the game!
+                if (shouldStartGame(mRoom)) {
+                    setInitialGameState();
+                }
             } else if (resultCode == Activity.RESULT_CANCELED) {
                 // Waiting room was dismissed with the back button. The meaning of this
                 // action is up to the game. You may choose to leave the room and cancel the
@@ -571,18 +698,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 // continue to connect in the background.
 
                 // in this example, we take the simple approach and just leave the room:
-                Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
-                        .leave(mJoinedRoomConfig, mRoom.getRoomId());
                 Log.i(TAG, "Left room because waiting room cancelled");
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                goToHomeScreen();
             } else if (resultCode == GamesActivityResultCodes.RESULT_LEFT_ROOM) {
                 // player wants to leave the room.
-                Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
-                        .leave(mJoinedRoomConfig, mRoom.getRoomId());
                 Log.i(TAG, "Left room because result left waiting room");
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                goToHomeScreen();
             }
         } else if (requestCode == RC_INVITATION_INBOX) {
+            findViewById(R.id.invitations_button).setEnabled(true);
             if (resultCode != Activity.RESULT_OK) {
                 // Canceled or some error.
                 return;
@@ -630,8 +754,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
                             findViewById(R.id.invite_players_button).setVisibility(View.VISIBLE);
                             findViewById(R.id.invitations_button).setVisibility(View.VISIBLE);
-                            findViewById(R.id.guessText).setVisibility(View.VISIBLE);
-                            findViewById(R.id.guessesFeed).setVisibility(View.VISIBLE);
                             Log.i(TAG, "Successfully signed in silently as: " + mGoogleSignInAccount.getDisplayName());
                             checkForInvitation();
                         } else {
@@ -717,6 +839,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         new OnSuccessListener<Bundle>() {
                             @Override
                             public void onSuccess(Bundle bundle) {
+                                if (bundle == null) {
+                                    return;
+                                }
                                 Invitation invitation = bundle.getParcelable(Multiplayer.EXTRA_INVITATION);
                                 if (invitation != null) {
                                     RoomConfig.Builder builder = RoomConfig.builder(mRoomUpdateCallback)
@@ -784,18 +909,35 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         if (message instanceof GuessMessage) {
             GuessMessage guessMessage = (GuessMessage) message;
-            addToMessageFeed(guessMessage.getGuess());
+
+            addToMessageFeed(guessMessage.getDisplayName() + ": " + guessMessage.getGuess());
 
             // TODO: Add logic for ending game?
             if (isMyTurn()) {
-                if (guessMessage.getGuess().toLowerCase().equals(mTurnWord)) {
+                if (guessMessage.getGuess().toLowerCase().equals(mTurnWord.toLowerCase())) {
                     Log.d(TAG, "Received a correct guess: " + guessMessage.getGuess() + " from: " + guessMessage.getGuesserId());
                     mMatchTurnNumber += 1;
-                    // Send turn message to others
-                    TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, guessMessage.getGuesserId(), mTurnWord, false);
-                    sendMessage(turnMessage);
-                    updateTurnIndices();
-                    beginMyTurn();
+                    mCountDownTimer.cancel();
+                    String displayName = mRoom.getParticipant(guessMessage.getGuesserId()).getDisplayName();
+                    int guesserScore =  mDisplayNamesToScores.get(displayName) + 100;
+                    mDisplayNamesToScores.put(displayName, guesserScore);
+
+                    if(gotWinner()){
+                        Log.d(TAG, "Got a winner. mDisplayNamesToScore = " + mDisplayNamesToScores);
+                        winnerName = displayName;
+                        EndGameMessage endGameMessage = new EndGameMessage(mDisplayNamesToScores, displayName);
+                        sendMessage(endGameMessage);
+                        showScoreBoard();
+                        // end game sys.stop. no more programming
+                    } else {
+                        Log.d(TAG, "Sending Turn message");
+                        // Send turn message to others
+                        TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, guessMessage.getGuesserId(), mTurnWord, false,  maxPoints, mDisplayNamesToScores);
+                        sendMessage(turnMessage);
+
+                        updateTurnIndices();
+                        beginMyTurn();
+                    }
                 }
             }
         } else if (message instanceof DrawingMessage) {
@@ -809,9 +951,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } else if (message instanceof UndoMessage) {
             paintView.undo();
         } else if (message instanceof TurnMessage) {
+            Log.d(TAG, "Received Turn message with mDisplayNamesToScores = " + mDisplayNamesToScores);
             // TurnMessage - set all turn-specific data
             TurnMessage msg = (TurnMessage) message;
             mMatchTurnNumber = msg.getTurnNumber();
+            maxPoints = msg.getMaxScore();
+            mDisplayNamesToScores = msg.getScores();
 
             if (msg.getPrevWord() != null) {
                 // Show the guesser what the correct word was
@@ -821,23 +966,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             // If this is a new game, set score to 0. Otherwise, if this guesser guessed correctly,
             // increment guesser's score
             if (msg.getNewGame()) {
-                mMyScore = 0;
+//                mMyScore = 0;
+                mDisplayNamesToScores.put(mRoom.getParticipant(mMyParticipantId).getDisplayName(), 0);
                 mMatchTurnNumber = 0;
                 updateTurnIndices();
             } else if (mMyParticipantId.equals(msg.getGuesserId())) {
-                mMyScore += 100;
-
-                // Indicate to guesser that guesser is correct
-                addToMessageFeed("You're correct! Your score is: " + mMyScore);
-
+                addToMessageFeed("You're correct! Your score is: " + mDisplayNamesToScores.get(mRoom.getParticipant(mMyParticipantId).getDisplayName()));
             }
 
             if (isMyTurn()) {
                 mTurnWord = getRandomWord();
             }
+
             updateTurnIndices();
             beginMyTurn();
+        } else if(message instanceof EndGameMessage){
+            EndGameMessage msg = (EndGameMessage) message;
+            winnerName = msg.getWinner();
+            mDisplayNamesToScores = msg.getScores();
+            showScoreBoard();
         }
+
+    }
+
+    /** Winning amount of points reached **/
+
+    private boolean gotWinner() {
+        Log.d(TAG, "mMyParticipandId: " + mMyParticipantId + " mDisplayNamesToScores: " + mDisplayNamesToScores);
+        Log.d(TAG, "mMyScore: " + mDisplayNamesToScores.get(mRoom.getParticipant(mMyParticipantId).getDisplayName()) + " maxPoints: " + maxPoints);
+        for (Map.Entry<String, Integer> entry : mDisplayNamesToScores.entrySet()) {
+            if(entry.getValue() >= maxPoints){
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -871,11 +1034,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      * @return true if the current player is the artist, false otherwise.
      */
     private boolean isMyTurn() {
+        if (mRoom == null) {
+            Log.v(TAG, "isMyTurn: no room - default to false.");
+            return false;
+        }
         ArrayList<String> participants = mRoom.getParticipantIds();
         int numParticipants = participants.size();
         if (numParticipants == 0) {
-            Log.w(TAG, "isMyTurn: no participants - default to true.");
-            return true;
+            Log.w(TAG, "isMyTurn: no participants - default to false.");
+            return false;
         }
         int participantTurnIndex = mMatchTurnNumber % numParticipants;
 
@@ -892,16 +1059,70 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.start_game_button).setVisibility(View.VISIBLE);
     }
 
+    private void showIsWaitingToStart(){
+        findViewById(R.id.is_waiting_to_start).setVisibility(View.VISIBLE);
+    }
+
+    private void showSetPointsToWin() {
+        findViewById(R.id.points_to_win).setVisibility(View.VISIBLE);
+    }
+
+    private void hideScoreBoard() {
+        findViewById(R.id.scoreBoardContainer).setVisibility(View.GONE);
+    }
+
+    private void showMenuButtons() {
+        findViewById(R.id.menuButtons).setVisibility(View.VISIBLE);
+    }
+
+    private void goToHomeScreen() {
+        if (mRoom != null) {
+            Games.getRealTimeMultiplayerClient(thisActivity, mGoogleSignInAccount)
+                    .leave(mJoinedRoomConfig, mRoom.getRoomId());
+        }
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        mRoom = null;
+        mJoinedRoomConfig = null;
+        hideScoreBoard();
+        hideGameView();
+        showMenuButtons();
+    }
+
+    private void setInitialGameState() {
+        hideMenuButtons();
+        hideScoreBoard();
+        hideGameView();
+        updateTurnIndices();
+        getDisplayNames();
+        LinearLayout guessesFeed = (LinearLayout) findViewById(R.id.guessesFeed);
+        guessesFeed.removeAllViews();
+        LinearLayout scoreBoard = (LinearLayout) findViewById(R.id.scoreBoard);
+        scoreBoard.removeAllViews();
+        mMatchTurnNumber = 0;
+        // Show start button and points to win for drawer only
+        if(isMyTurn()){
+            Log.d(TAG, "It is my turn. Show start & points");
+            showStartButton();
+            showSetPointsToWin();
+        } else {
+            Log.d(TAG, "It is not my turn. Show is waiting to start");
+            showIsWaitingToStart();
+        }
+    }
+
     /**
      * Show the UI for the player who is currently acting as the artist.
      */
     private void setArtistUI() {
         findViewById(R.id.guessText).setVisibility(View.GONE);
+        findViewById(R.id.guessesFeed).setVisibility(View.VISIBLE);
+        findViewById(R.id.messagesScrollView).setVisibility(View.VISIBLE);
+        findViewById(R.id.messages).setVisibility(View.VISIBLE);
         findViewById(R.id.guessWord).setVisibility(View.VISIBLE);
         findViewById(R.id.paintView).setVisibility(View.VISIBLE);
         findViewById(R.id.start_game_button).setVisibility(View.GONE);
+        findViewById(R.id.is_waiting_to_start).setVisibility(View.GONE);
         findViewById(R.id.countDown).setVisibility(View.VISIBLE);
-
 
         ((TextView) findViewById(R.id.guessWord)).setText("Your word is: " + mTurnWord);
         paintView.clear();
@@ -913,8 +1134,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      */
     private void setGuessingUI() {
         findViewById(R.id.guessText).setVisibility(View.VISIBLE);
+        findViewById(R.id.guessesFeed).setVisibility(View.VISIBLE);
+        findViewById(R.id.messagesScrollView).setVisibility(View.VISIBLE);
+        findViewById(R.id.messages).setVisibility(View.VISIBLE);
         findViewById(R.id.guessWord).setVisibility(View.GONE);
         findViewById(R.id.start_game_button).setVisibility(View.GONE);
+        findViewById(R.id.is_waiting_to_start).setVisibility(View.GONE);
         findViewById(R.id.paintView).setVisibility(View.VISIBLE);
         findViewById(R.id.countDown).setVisibility(View.VISIBLE);
         // Show the guesser what the correct word was
@@ -958,6 +1183,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      **/
     private void beginMyTurn() {
         Log.d(TAG, "beginMyTurn: " + isMyTurn());
+        invalidateOptionsMenu();
         if (isMyTurn()) {
             beginArtistTurn();
         } else {
@@ -970,10 +1196,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      * Begin a new match if there are enough players, and send a message to all other participants
      * with the initial turn data
      */
+
+    private void getDisplayNames() {
+        for (String participantId : mRoom.getParticipantIds()) {
+            mDisplayNamesToScores.put(mRoom.getParticipant(participantId).getDisplayName(), 0);
+        }
+    }
+
     private void startMatch() {
         if (shouldStartGame(mRoom)) {
-            updateTurnIndices();
+//            updateTurnIndices();
             mPlaying = true;
+
 
             // If the player is the artist, choose a random word
             if (isMyTurn()) {
@@ -983,10 +1217,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             mMatchTurnNumber = 0;
             // Send turn message to others
-            TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, null, null, true);
+            Log.d(TAG, "Sending Turn message in startMatch");
+            TurnMessage turnMessage = new TurnMessage(mMatchTurnNumber, null, null, true,  maxPoints, mDisplayNamesToScores);
             sendMessage(turnMessage);
 
-            mMyScore = 0;
             beginMyTurn();
         }
     }
