@@ -469,6 +469,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         // Listener for setting points
         final EditText pointsText = (EditText) findViewById(R.id.points_to_win);
+        pointsText.setHint("" + maxPoints);
 
         pointsText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
