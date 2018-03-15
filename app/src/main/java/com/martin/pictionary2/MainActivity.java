@@ -446,7 +446,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                     // set guess text in list view
                     TextView guessContent = new TextView(thisActivity);
-                    guessContent.setText( mRoom.getParticipant(mMyParticipantId).getDisplayName() + ": " + v.getText().toString());
+                    guessContent.setText(mRoom.getParticipant(mMyParticipantId).getDisplayName() + ": " + v.getText().toString());
                     guessesFeed.addView(guessContent);
                     GuessMessage guess = new GuessMessage(mRoom.getParticipant(mMyParticipantId).getDisplayName() ,v.getText().toString(), mMyParticipantId);
                     sendMessage(guess);
@@ -907,7 +907,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             // TODO: Add logic for ending game?
             if (isMyTurn()) {
-                if (guessMessage.getGuess().toLowerCase().equals(mTurnWord)) {
+                if (guessMessage.getGuess().toLowerCase().equals(mTurnWord.toLowerCase())) {
                     Log.d(TAG, "Received a correct guess: " + guessMessage.getGuess() + " from: " + guessMessage.getGuesserId());
                     mMatchTurnNumber += 1;
                     mCountDownTimer.cancel();
